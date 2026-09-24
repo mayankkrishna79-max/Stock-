@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101828">
+<title>A+ Trader PWA Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --primary:#315efb; --primary-soft:#eef2ff; --bg:#f5f7fb; --card-bg:#fff;
+  --text:#172033; --muted:#667085; --border:#e4e7ec;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:var(--text);background:var(--bg)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{padding-bottom:80px}
+header{background:#101828;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:19px;font-weight:800}
+header small{color:#cbd5e1;font-size:12px}
+main{max-width:1050px;margin:auto;padding:12px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;transition:0.15s ease}
+.primary{background:var(--primary);color:#fff}.primary:hover{opacity:0.9}
+.soft{background:var(--primary-soft);color:var(--primary)}.soft:hover{background:#e0e7ff}
+.danger{background:#fff0f0;color:#b42318}
+.drop{border:2px dashed #cbd5e1;border-radius:12px;padding:24px;text-align:center;color:var(--muted);background:#fcfcfd;cursor:pointer}
+.drop:hover{border-color:var(--primary);background:#f8faff}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.kpi{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
+.kpi small{color:var(--muted);font-size:11px;font-weight:600}
+.kpi b{display:block;font-size:22px;color:#101828;margin-top:3px}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filters input,.filters select{width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;outline:none;font-size:13px}
+.item{border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 0;background:#fff;cursor:pointer;transition:border-color 0.2s}
+.item:hover{border-color:#b2ccff}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.stock{font-size:15px;font-weight:800;color:#101828}
+.score{font-size:22px;font-weight:900;color:var(--primary)}
+.muted{color:var(--muted);font-size:11px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.tag{padding:3px 8px;border-radius:99px;font-size:10px;font-weight:800}
+.a{background:#ecfdf3;color:#027a48}.w{background:#fffaeb;color:#b54708}.r{background:#fff1f3;color:#c01048}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.metric{background:#f8fafc;border-radius:8px;padding:6px 8px;font-size:10px;color:var(--muted)}
+.metric b{display:block;color:#172033;font-size:13px;margin-top:2px}
+.bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:40}
+.bottom button{background:none;border:0;font-weight:700;color:#475467;font-size:13px;cursor:pointer}
+.bottom button.active{color:var(--primary)}
+.hidden{display:none}
+@media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
+
+/* Modal Details */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:14px}
+.modal{background:#fff;max-width:550px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px}
+.factor-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 A+ Trader Pro</h1>
+  <small id="status">Offline-ready • Local Storage</small>
+</header>
+
+<main>
+  <section id="home">
+    <div class="card">
+      <div class="drop" onclick="document.getElementById('files').click()">
+        <b>📁 Upload Screener Files (CSV / Excel .xlsx / .xls)</b><br>
+        <span style="font-size:12px;color:#667085;">Select multiple files at once or drop them here</span>
+        <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
+        <button class="btn soft" onclick="exportData('csv')">Export CSV</button>
+        <button class="btn soft" onclick="exportData('xlsx')">Export Excel</button>
+        <button class="btn soft" onclick="backup()">Backup JSON</button>
+        <button class="btn soft" onclick="document.getElementById('restore').click()">Restore</button>
+        <input id="restore" class="hidden" type="file" accept=".json">
+      </div>
+      <p class="muted" style="margin-top:8px;">Har file ek individual screener maani jaati hai. Data local IndexedDB me save hota hai.</p>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><small>Total Stocks</small><b id="n">0</b></div>
+      <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
+      <div class="kpi"><small>BUY Signals</small><b id="buy">0</b></div>
+      <div class="kpi"><small>WAIT</small><b id="wait">0</b></div>
+      <div class="kpi"><small>Top Score</small><b id="top">0</b></div>
+      <div class="kpi"><small>Snapshots</small><b id="snap">0</b></div>
+    </div>
+
+    <div class="card">
+      <div class="filters">
+        <input id="search" placeholder="Search by Stock or NSE Symbol..." oninput="render()">
+        <select id="act" onchange="render()">
+          <option value="All">All Actions</option>
+          <option value="BUY">BUY Only</option>
+          <option value="WAIT">WAIT Only</option>
+          <option value="AVOID">AVOID Only</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </section>
+
+  <section id="history" class="hidden">
+    <div class="card">
+      <h3>📚 Saved Snapshots</h3>
+      <div id="hist" style="margin-top:10px;"></div>
+    </div>
+  </section>
+
+  <section id="settings" class="hidden">
+    <div class="card">
+      <h3>⚙️ Device Data & Storage</h3>
+      <p class="muted" style="margin:8px 0 14px;">Aapka saara financial data aapke device par IndexedDB me rehta hai. Browser clear karne se pehle backup download kar lein.</p>
+      <button class="btn primary" onclick="backup()">Download Complete JSON Backup</button>
+      <button class="btn danger" onclick="wipe()" style="margin-left:8px;">Clear All Data</button>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom">
+  <button id="nav-home" class="active" onclick="tab('home')">🏠 Ranker</button>
+  <button id="nav-history" onclick="tab('history')">📚 History</button>
+  <button id="nav-settings" onclick="tab('settings')">⚙️ Settings</button>
+</nav>
+
+<!-- Modal for details -->
+<div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+const DB='aplus_trader_db', VER=1;
+let db, ranked=[], snapshotCount=0;
+
+// Escape helper to prevent XSS
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// IndexedDB Layer
+function openDB(){
+  return new Promise((res,rej)=>{
+    let r=indexedDB.open(DB,VER);
+    r.onupgradeneeded=()=>{
+      let d=r.result;
+      if(!d.objectStoreNames.contains('snapshots')) d.createObjectStore('snapshots',{keyPath:'id'});
+    };
+    r.onsuccess=()=>{db=r.result;res()};
+    r.onerror=()=>rej(r.error);
+  });
+}
+function put(x){
+  return new Promise((res,rej)=>{
+    let t=db.transaction('snapshots','readwrite');
+    t.objectStore('snapshots').put(x);
+    t.oncomplete=res; t.onerror=()=>rej(t.error);
+  });
+}
+function all(){
+  return new Promise((res,rej)=>{
+    let t=db.transaction('snapshots','readonly'),q=t.objectStore('snapshots').getAll();
+    q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+  });
+}
+
+function getNum(v){
+  if(v===undefined || v===null || v==='') return NaN;
+  let n = parseFloat(String(v).replace(/,/g,'').trim());
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function getKey(r){
+  return String(r['NSE code']||r['NSE Code']||r['Symbol']||r['NSE']||r['Ticker']||'').trim().toUpperCase();
+}
+
+function getVal(rows, names){
+  for(const r of rows){
+    for(const n of names){
+      if(r[n] !== undefined && r[n] !== '') return getNum(r[n]);
+    }
+  }
+  return NaN;
+}
+
+// Scorer Algorithm
+function scoreStock(o){
+  let rows = o.rows;
+  let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close']);
+  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High']);
+  let wh = getVal(rows, ['Week High', 'Weekly High']);
+  let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14']);
+  let d = getVal(rows, ['Trendlyne Durability Score', 'Durability']);
+  let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum']);
+  let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation']);
+  let dv = getVal(rows, ['Day Volume', 'Volume', 'Total Traded Quantity']);
+  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'Avg Volume']);
+  let sm = getVal(rows, ['Month Change %', '1M Return']);
+  let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
+  let ni = getVal(rows, ['Nifty50 Month change %', 'Nifty Return']);
+  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10']);
+  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20']);
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50']);
+  let s200 = getVal(rows, ['Day SMA200', 'SMA200', 'SMA 200']);
+  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
+  let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
+  let support = getVal(rows, ['Support', 'Support 1', 'S1']);
+  let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
+
+  let pts = 0, max = 0;
+  let factors = [];
+
+  const add = (label, w, ok, available, desc) => {
+    if(available){
+      max += w;
+      if(ok) pts += w;
+      factors.push({label, weight: w, passed: ok, desc});
+    }
+  };
+
+  add('Multi-Screener Match', 30, rows.length >= 4, true, `Found in ${rows.length} screener file(s)`);
+  add('Price > EMA10', 3, p > e10, Number.isFinite(p) && Number.isFinite(e10), `₹${p} > ₹${e10}`);
+  add('Price > EMA20', 3, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
+  add('Price > SMA50', 3, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
+  add('Golden Structure (50 > 200 SMA)', 6, s50 > s200, Number.isFinite(s50) && Number.isFinite(s200), `50SMA (${s50}) > 200SMA (${s200})`);
+
+  let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
+  add('Near 52W High (<= 5%)', 15, gap >= 0 && gap <= 5, Number.isFinite(gap), `${gap ? gap.toFixed(1) : ''}% away from 52W High`);
+
+  add('Sector Outperformance', 7, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
+  add('Market Outperformance', 4, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
+
+  let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
+  add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly average`);
+  add('Healthy Momentum (RSI 60-75)', 5, rsi >= 60 && rsi <= 75, Number.isFinite(rsi), `RSI: ${rsi}`);
+  add('High Durability (> 65)', 4, d > 65, Number.isFinite(d), `Durability: ${d}`);
+  add('Strong Momentum Score (> 59)', 4, m > 59, Number.isFinite(m), `Momentum Score: ${m}`);
+  add('Valuation (> 40)', 4, v > 40, Number.isFinite(v), `Valuation: ${v}`);
+
+  let score = max ? Math.min(100, (pts / max) * 100) : 0;
+  let grade = score >= 85 ? 'A+' : score >= 75 ? 'A' : score >= 60 ? 'Watchlist' : 'Avoid';
+
+  let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
+  let entry = Number.isFinite(resistance) ? resistance * 1.005 : p;
+  let supportLevel = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
+  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(e20) && Number.isFinite(p) ? Math.abs(p - e20) * 0.35 : p * 0.03);
+  let stop = Number.isFinite(supportLevel) ? supportLevel - buffer : entry - buffer;
+  if (!Number.isFinite(stop) || stop <= 0 || stop >= entry) stop = entry * 0.97;
+
+  let risk = entry - stop;
+  let t1 = entry + 2 * risk;
+  let t2 = entry + 3 * risk;
+  let rr = risk > 0 ? (t1 - entry) / risk : NaN;
+
+  let critical = [p, resistance, e20, rsi, vr].every(Number.isFinite);
+  let breakout = critical && p >= resistance * 0.99;
+  let action = (score >= 80 && critical && breakout && p > e20 && vr >= 1.25 && rsi >= 58 && rsi <= 75) ? 'BUY' : score >= 70 ? 'WAIT' : 'AVOID';
+
+  let missing = [];
+  if (!Number.isFinite(p)) missing.push('Price');
+  if (!Number.isFinite(resistance)) missing.push('Resistance / 52W High');
+  if (!Number.isFinite(e20)) missing.push('EMA20');
+  if (!Number.isFinite(rsi)) missing.push('RSI');
+  if (!Number.isFinite(vr)) missing.push('Volume Data');
+
+  return {
+    stock: o.stock,
+    key: o.key,
+    price: Number.isFinite(p) ? p : '-',
+    score: +score.toFixed(1),
+    grade,
+    action,
+    entry: Number.isFinite(entry) ? +entry.toFixed(2) : '-',
+    stop: Number.isFinite(stop) ? +stop.toFixed(2) : '-',
+    t1: Number.isFinite(t1) ? +t1.toFixed(2) : '-',
+    t2: Number.isFinite(t2) ? +t2.toFixed(2) : '-',
+    rr: Number.isFinite(rr) ? `1:${rr.toFixed(1)}` : '-',
+    screeners: o.rows.length,
+    screenerNames: [...new Set(o.rows.map(r => r._screenerName).filter(Boolean))],
+    gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
+    vr: Number.isFinite(vr) ? +vr.toFixed(2) : '-',
+    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : '-',
+    pts, max, factors, missing
+  };
+}
+
+// Parse both CSV and Excel flawlessly
+async function parseFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  const buffer = await file.arrayBuffer();
+
+  let workbook;
+  if(ext === 'csv'){
+    // Clean string conversion with fallback for CSV UTF-8 / ASCII
+    const text = new TextDecoder('utf-8').decode(buffer);
+    workbook = XLSX.read(text, { type: 'string', raw: false });
+  } else {
+    // Binary Array parsing for .xlsx and .xls
+    workbook = XLSX.read(buffer, { type: 'array' });
+  }
+
+  const firstSheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[firstSheetName];
+  const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+  // Tag rows with the screener filename
+  return jsonRows.map(row => {
+    row._screenerName = file.name.replace(/\.[^/.]+$/, "");
+    return row;
+  });
+}
+
+function processAllRows(allScreenerBatches){
+  let map = new Map();
+  allScreenerBatches.forEach(rows => {
+    rows.forEach(r => {
+      let k = getKey(r);
+      if(!k) return;
+      if(!map.has(k)){
+        map.set(k, {
+          key: k,
+          stock: r['Stock Name'] || r['StockName'] || r['Company'] || k,
+          rows: []
+        });
+      }
+      map.get(k).rows.push(r);
+    });
+  });
+
+  return [...map.values()].map(scoreStock).sort((a,b) => b.score - a.score);
+}
+
+// File Input Handler
+document.getElementById('files').addEventListener('change', async (e) => {
+  let files = Array.from(e.target.files);
+  if(!files.length) return;
+
+  statusEl('Reading & parsing files...');
+  let parsedBatches = [];
+
+  for(const f of files){
+    try {
+      let rows = await parseFile(f);
+      if(rows.length) parsedBatches.push(rows);
+    } catch(err) {
+      console.error(`Error parsing ${f.name}`, err);
+    }
+  }
+
+  if(!parsedBatches.length){
+    alert('Could not parse valid records from selected files.');
+    return;
+  }
+
+  ranked = processAllRows(parsedBatches);
+  let snap = { id: Date.now(), date: new Date().toISOString(), files: parsedBatches.length, results: ranked };
+  await put(snap);
+  snapshotCount = (await all()).length;
+  render();
+  loadHistory();
+  statusEl('Saved locally • ' + new Date().toLocaleTimeString());
+});
+
+function statusEl(msg){ document.getElementById('status').textContent = msg; }
+
+// Render Items
+function render(){
+  let q = document.getElementById('search').value.toLowerCase().trim();
+  let a = document.getElementById('act').value;
+
+  let filtered = ranked.filter(x => {
+    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
+    let matchAction = a === 'All' || x.action === a;
+    return matchQuery && matchAction;
+  });
+
+  let listEl = document.getElementById('list');
+  if(!filtered.length){
+    listEl.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match the current filter.</div>`;
+  } else {
+    listEl.innerHTML = filtered.map((x, i) => `
+      <div class="item" onclick="openModal('${escapeHtml(x.key)}')">
+        <div class="row">
+          <div>
+            <div class="stock">${i+1}. ${escapeHtml(x.stock)} (${escapeHtml(x.key)})</div>
+            <div class="muted">Price: ₹${x.price} • ${x.screeners} screener matches</div>
+          </div>
+          <div class="score">${x.score}</div>
+        </div>
+        <div class="tags">
+          <span class="tag ${x.grade.startsWith('A')?'a':x.grade==='Watchlist'?'w':'r'}">Grade ${escapeHtml(x.grade)}</span>
+          <span class="tag ${x.action==='BUY'?'a':x.action==='WAIT'?'w':'r'}">${escapeHtml(x.action)}</span>
+        </div>
+        <div class="grid">
+          <div class="metric">Entry<b>₹${x.entry}</b></div>
+          <div class="metric">Stop<b>₹${x.stop}</b></div>
+          <div class="metric">T1<b>₹${x.t1}</b></div>
+          <div class="metric">T2<b>₹${x.t2}</b></div>
+          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
+          <div class="metric">Volume<b>${x.vr}${x.vr!=='-'?'x':''}</b></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('n').textContent = ranked.length;
+  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
+  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
+  document.getElementById('wait').textContent = ranked.filter(x => x.action==='WAIT').length;
+  document.getElementById('top').textContent = ranked[0]?.score || 0;
+  document.getElementById('snap').textContent = snapshotCount;
+}
+
+// Modal inspection
+function openModal(symbol){
+  let x = ranked.find(item => item.key === symbol);
+  if(!x) return;
+
+  let modalContent = document.getElementById('modal-content');
+  modalContent.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="font-size:18px;">${escapeHtml(x.stock)} (${escapeHtml(x.key)})</h2>
+      <button class="btn soft" onclick="closeModal()">✕</button>
+    </div>
+    <div style="font-size:13px;margin-bottom:14px;">
+      <b>Total Score:</b> ${x.score}/100 (${x.pts} of ${x.max} points earned)
+    </div>
+    <h4 style="font-size:13px;margin-bottom:6px;">Parameters Breakdown:</h4>
+    ${x.factors.map(f => `
+      <div class="factor-row">
+        <span>${f.passed ? '✅' : '❌'} ${escapeHtml(f.label)} <small style="color:var(--muted)">(${escapeHtml(f.desc)})</small></span>
+        <b>${f.passed ? '+' + f.weight : '0'} pts</b>
+      </div>
+    `).join('')}
+
+    ${x.screenerNames.length ? `
+      <h4 style="font-size:13px;margin:12px 0 6px;">Matched Screeners:</h4>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${x.screenerNames.map(name => `<span class="tag soft">${escapeHtml(name)}</span>`).join('')}
+      </div>
+    ` : ''}
+
+    ${x.missing.length ? `
+      <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
+        <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
+      </div>
+    ` : ''}
+  `;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+// Navigation Tabs
+function tab(tabId){
+  ['home','history','settings'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== tabId);
+    let navBtn = document.getElementById('nav-' + id);
+    if(navBtn) navBtn.classList.toggle('active', id === tabId);
+  });
+  if(tabId === 'history') loadHistory();
+}
+
+// History
+async function loadHistory(){
+  let s = (await all()).sort((a,b) => b.id - a.id);
+  let hist = document.getElementById('hist');
+  hist.innerHTML = s.map(x => `
+    <div class="item" style="cursor:default">
+      <div class="row">
+        <b>${new Date(x.date).toLocaleString()}</b>
+        <span>${x.results.length} stocks</span>
+      </div>
+      <div class="muted" style="margin:4px 0 8px;">
+        ${x.files} screener files • Top stock: ${escapeHtml(x.results[0]?.stock || '-')} (${x.results[0]?.score || 0})
+      </div>
+      <button class="btn soft" onclick="restoreSnapshot(${x.id})">Open Snapshot</button>
+    </div>
+  `).join('') || '<p class="muted">No snapshots recorded yet.</p>';
+}
+
+async function restoreSnapshot(id){
+  let s = (await all()).find(x => x.id === id);
+  if(s){
+    ranked = s.results;
+    tab('home');
+    render();
+  }
+}
+
+// Working Demo Generator
+function runDemo(){
+  const makeStock = (symbol, name, price, rsi, d, m, v, volRatio, nearHigh) => ({
+    'NSE code': symbol,
+    'Stock Name': name,
+    'Current Price': price,
+    '1Yr High': nearHigh ? price * 1.02 : price * 1.3,
+    'Day RSI': rsi,
+    'Trendlyne Durability Score': d,
+    'Trendlyne Momentum Score': m,
+    'Trendlyne Valuation Score': v,
+    'Day EMA10': price * 0.98,
+    'Day EMA20': price * 0.95,
+    'Day SMA50': price * 0.92,
+    'Day SMA200': price * 0.85,
+    'Day Volume': 500000 * volRatio,
+    'Month Volume Avg': 500000,
+    'Month Change %': 12,
+    'Sector Month Change %': 8,
+    'Nifty50 Month change %': 3,
+    '_screenerName': 'High_Momentum'
+  });
+
+  const demoScreeners = [
+    [
+      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true),
+      makeStock('BEL', 'Bharat Electronics', 315, 64, 78, 65, 58, 1.6, true),
+      makeStock('RELIANCE', 'Reliance Industries', 2950, 48, 60, 50, 45, 0.9, false)
+    ],
+    [
+      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true),
+      makeStock('BEL', 'Bharat Electronics', 315, 64, 78, 65, 58, 1.6, true)
+    ],
+    [
+      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true)
+    ]
+  ];
+
+  ranked = processAllRows(demoScreeners);
+  render();
+  statusEl('Demo data loaded successfully!');
+}
+
+// Export CSV / Excel
+function exportData(type){
+  if(!ranked.length){ alert('No stocks to export.'); return; }
+  let rows = ranked.map((x, i) => ({
+    Rank: i + 1,
+    Stock: x.stock,
+    NSE: x.key,
+    Score: x.score,
+    Grade: x.grade,
+    Action: x.action,
+    Entry: x.entry,
+    Stop: x.stop,
+    Target1: x.t1,
+    Target2: x.t2,
+    RR: x.rr,
+    Screeners: x.screeners,
+    Gap52W: x.gap,
+    VolumeRatio: x.vr,
+    RSI: x.rsi
+  }));
+
+  let ws = XLSX.utils.json_to_sheet(rows);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Ranked Stocks');
+
+  if(type === 'csv'){
+    XLSX.writeFile(wb, 'aplus_ranked_stocks.csv');
+  } else {
+    XLSX.writeFile(wb, 'aplus_ranked_stocks.xlsx');
+  }
+}
+
+// Backup & Restore
+async function backup(){
+  let s = await all();
+  let blob = new Blob([JSON.stringify({ version: 1, exported: new Date().toISOString(), snapshots: s }, null, 2)], { type: 'application/json' });
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aplus_trader_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+document.getElementById('restore').addEventListener('change', async (e) => {
+  let file = e.target.files[0];
+  if(!file) return;
+  try {
+    let data = JSON.parse(await file.text());
+    if(data.snapshots && Array.isArray(data.snapshots)){
+      for(const s of data.snapshots) await put(s);
+      ranked = data.snapshots.at(-1)?.results || [];
+      snapshotCount = (await all()).length;
+      render();
+      loadHistory();
+      alert('Backup restored successfully!');
+    }
+  } catch(err){
+    alert('Invalid backup JSON file.');
+  }
+});
+
+async function wipe(){
+  if(confirm('Are you sure you want to delete all local snapshots?')){
+    let t = db.transaction('snapshots', 'readwrite');
+    t.objectStore('snapshots').clear();
+    t.oncomplete = () => {
+      ranked = [];
+      snapshotCount = 0;
+      render();
+      loadHistory();
+      statusEl('All local data cleared');
+    };
+  }
+}
+
+// Init
+openDB().then(async () => {
+  let s = (await all()).sort((a,b) => b.id - a.id);
+  snapshotCount = s.length;
+  ranked = s[0]?.results || [];
+  render();
+  loadHistory();
+});
+</script>
+</body>
+</html>

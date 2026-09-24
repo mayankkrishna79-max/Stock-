@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>A+ Trader PWA Pro</title>
+<title>A+ Trader Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -15,7 +15,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{padding-bottom:80px}
-header{background:#101828;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center}
+header{background:#101828;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:19px;font-weight:800}
 header small{color:#cbd5e1;font-size:12px}
 main{max-width:1050px;margin:auto;padding:12px}
@@ -45,16 +45,27 @@ main{max-width:1050px;margin:auto;padding:12px}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .metric{background:#f8fafc;border-radius:8px;padding:6px 8px;font-size:10px;color:var(--muted)}
 .metric b{display:block;color:#172033;font-size:13px;margin-top:2px}
-.bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:40}
+.bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:30}
 .bottom button{background:none;border:0;font-weight:700;color:#475467;font-size:13px;cursor:pointer}
 .bottom button.active{color:var(--primary)}
-.hidden{display:none}
-@media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
 
-/* Modal Details */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:14px}
-.modal{background:#fff;max-width:550px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px}
+/* MODAL FIX: display none must have !important to prevent overlay hanging */
+.hidden{display:none !important;}
+
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;padding:14px;
+}
+.modal{
+  background:#fff;max-width:550px;width:100%;
+  border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
 .factor-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+
+@media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
 </head>
 <body>
@@ -68,8 +79,8 @@ main{max-width:1050px;margin:auto;padding:12px}
   <section id="home">
     <div class="card">
       <div class="drop" onclick="document.getElementById('files').click()">
-        <b>📁 Upload Screener Files (CSV / Excel .xlsx / .xls)</b><br>
-        <span style="font-size:12px;color:#667085;">Select multiple files at once or drop them here</span>
+        <b>📁 Upload Screener Files (.CSV / .XLSX / .XLS)</b><br>
+        <span style="font-size:12px;color:#667085;">Tap here to upload single or multiple screener files</span>
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div class="toolbar">
@@ -80,7 +91,7 @@ main{max-width:1050px;margin:auto;padding:12px}
         <button class="btn soft" onclick="document.getElementById('restore').click()">Restore</button>
         <input id="restore" class="hidden" type="file" accept=".json">
       </div>
-      <p class="muted" style="margin-top:8px;">Har file ek individual screener maani jaati hai. Data local IndexedDB me save hota hai.</p>
+      <p class="muted" style="margin-top:8px;">Har file ko ek alag screener maana jata hai. Data indexedDB me save hota hai.</p>
     </div>
 
     <div class="kpis">
@@ -117,7 +128,7 @@ main{max-width:1050px;margin:auto;padding:12px}
   <section id="settings" class="hidden">
     <div class="card">
       <h3>⚙️ Device Data & Storage</h3>
-      <p class="muted" style="margin:8px 0 14px;">Aapka saara financial data aapke device par IndexedDB me rehta hai. Browser clear karne se pehle backup download kar lein.</p>
+      <p class="muted" style="margin:8px 0 14px;">Aapka saara data aapke device par IndexedDB me rehta hai.</p>
       <button class="btn primary" onclick="backup()">Download Complete JSON Backup</button>
       <button class="btn danger" onclick="wipe()" style="margin-left:8px;">Clear All Data</button>
     </div>
@@ -130,7 +141,7 @@ main{max-width:1050px;margin:auto;padding:12px}
   <button id="nav-settings" onclick="tab('settings')">⚙️ Settings</button>
 </nav>
 
-<!-- Modal for details -->
+<!-- Modal Container (Guaranteed Hidden by default) -->
 <div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
   <div class="modal" id="modal-content"></div>
 </div>
@@ -139,13 +150,11 @@ main{max-width:1050px;margin:auto;padding:12px}
 const DB='aplus_trader_db', VER=1;
 let db, ranked=[], snapshotCount=0;
 
-// Escape helper to prevent XSS
 function escapeHtml(str){
   if(!str) return '';
   return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-// IndexedDB Layer
 function openDB(){
   return new Promise((res,rej)=>{
     let r=indexedDB.open(DB,VER);
@@ -190,7 +199,6 @@ function getVal(rows, names){
   return NaN;
 }
 
-// Scorer Algorithm
 function scoreStock(o){
   let rows = o.rows;
   let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close']);
@@ -225,7 +233,7 @@ function scoreStock(o){
     }
   };
 
-  add('Multi-Screener Match', 30, rows.length >= 4, true, `Found in ${rows.length} screener file(s)`);
+  add('Multi-Screener Match', 30, rows.length >= 4, true, `Found in ${rows.length} screener(s)`);
   add('Price > EMA10', 3, p > e10, Number.isFinite(p) && Number.isFinite(e10), `₹${p} > ₹${e10}`);
   add('Price > EMA20', 3, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
   add('Price > SMA50', 3, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
@@ -239,9 +247,9 @@ function scoreStock(o){
 
   let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
   add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly average`);
-  add('Healthy Momentum (RSI 60-75)', 5, rsi >= 60 && rsi <= 75, Number.isFinite(rsi), `RSI: ${rsi}`);
+  add('Momentum (RSI 60-75)', 5, rsi >= 60 && rsi <= 75, Number.isFinite(rsi), `RSI: ${rsi}`);
   add('High Durability (> 65)', 4, d > 65, Number.isFinite(d), `Durability: ${d}`);
-  add('Strong Momentum Score (> 59)', 4, m > 59, Number.isFinite(m), `Momentum Score: ${m}`);
+  add('Momentum Score (> 59)', 4, m > 59, Number.isFinite(m), `Score: ${m}`);
   add('Valuation (> 40)', 4, v > 40, Number.isFinite(v), `Valuation: ${v}`);
 
   let score = max ? Math.min(100, (pts / max) * 100) : 0;
@@ -268,15 +276,11 @@ function scoreStock(o){
   if (!Number.isFinite(resistance)) missing.push('Resistance / 52W High');
   if (!Number.isFinite(e20)) missing.push('EMA20');
   if (!Number.isFinite(rsi)) missing.push('RSI');
-  if (!Number.isFinite(vr)) missing.push('Volume Data');
+  if (!Number.isFinite(vr)) missing.push('Volume');
 
   return {
-    stock: o.stock,
-    key: o.key,
-    price: Number.isFinite(p) ? p : '-',
-    score: +score.toFixed(1),
-    grade,
-    action,
+    stock: o.stock, key: o.key, price: Number.isFinite(p) ? p : '-',
+    score: +score.toFixed(1), grade, action,
     entry: Number.isFinite(entry) ? +entry.toFixed(2) : '-',
     stop: Number.isFinite(stop) ? +stop.toFixed(2) : '-',
     t1: Number.isFinite(t1) ? +t1.toFixed(2) : '-',
@@ -291,26 +295,18 @@ function scoreStock(o){
   };
 }
 
-// Parse both CSV and Excel flawlessly
 async function parseFile(file){
   const ext = file.name.split('.').pop().toLowerCase();
   const buffer = await file.arrayBuffer();
-
   let workbook;
   if(ext === 'csv'){
-    // Clean string conversion with fallback for CSV UTF-8 / ASCII
     const text = new TextDecoder('utf-8').decode(buffer);
     workbook = XLSX.read(text, { type: 'string', raw: false });
   } else {
-    // Binary Array parsing for .xlsx and .xls
     workbook = XLSX.read(buffer, { type: 'array' });
   }
-
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-  // Tag rows with the screener filename
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
   return jsonRows.map(row => {
     row._screenerName = file.name.replace(/\.[^/.]+$/, "");
     return row;
@@ -333,18 +329,14 @@ function processAllRows(allScreenerBatches){
       map.get(k).rows.push(r);
     });
   });
-
   return [...map.values()].map(scoreStock).sort((a,b) => b.score - a.score);
 }
 
-// File Input Handler
 document.getElementById('files').addEventListener('change', async (e) => {
   let files = Array.from(e.target.files);
   if(!files.length) return;
-
-  statusEl('Reading & parsing files...');
+  statusEl('Reading files...');
   let parsedBatches = [];
-
   for(const f of files){
     try {
       let rows = await parseFile(f);
@@ -353,12 +345,10 @@ document.getElementById('files').addEventListener('change', async (e) => {
       console.error(`Error parsing ${f.name}`, err);
     }
   }
-
   if(!parsedBatches.length){
-    alert('Could not parse valid records from selected files.');
+    alert('Files parse nahi ho sake. Please valid CSV ya Excel file check karein.');
     return;
   }
-
   ranked = processAllRows(parsedBatches);
   let snap = { id: Date.now(), date: new Date().toISOString(), files: parsedBatches.length, results: ranked };
   await put(snap);
@@ -370,11 +360,9 @@ document.getElementById('files').addEventListener('change', async (e) => {
 
 function statusEl(msg){ document.getElementById('status').textContent = msg; }
 
-// Render Items
 function render(){
   let q = document.getElementById('search').value.toLowerCase().trim();
   let a = document.getElementById('act').value;
-
   let filtered = ranked.filter(x => {
     let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
     let matchAction = a === 'All' || x.action === a;
@@ -418,11 +406,9 @@ function render(){
   document.getElementById('snap').textContent = snapshotCount;
 }
 
-// Modal inspection
 function openModal(symbol){
   let x = ranked.find(item => item.key === symbol);
   if(!x) return;
-
   let modalContent = document.getElementById('modal-content');
   modalContent.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -456,9 +442,10 @@ function openModal(symbol){
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+function closeModal(){ 
+  document.getElementById('modal').classList.add('hidden'); 
+}
 
-// Navigation Tabs
 function tab(tabId){
   ['home','history','settings'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', id !== tabId);
@@ -468,7 +455,6 @@ function tab(tabId){
   if(tabId === 'history') loadHistory();
 }
 
-// History
 async function loadHistory(){
   let s = (await all()).sort((a,b) => b.id - a.id);
   let hist = document.getElementById('hist');
@@ -495,7 +481,6 @@ async function restoreSnapshot(id){
   }
 }
 
-// Working Demo Generator
 function runDemo(){
   const makeStock = (symbol, name, price, rsi, d, m, v, volRatio, nearHigh) => ({
     'NSE code': symbol,
@@ -538,7 +523,6 @@ function runDemo(){
   statusEl('Demo data loaded successfully!');
 }
 
-// Export CSV / Excel
 function exportData(type){
   if(!ranked.length){ alert('No stocks to export.'); return; }
   let rows = ranked.map((x, i) => ({
@@ -570,7 +554,6 @@ function exportData(type){
   }
 }
 
-// Backup & Restore
 async function backup(){
   let s = await all();
   let blob = new Blob([JSON.stringify({ version: 1, exported: new Date().toISOString(), snapshots: s }, null, 2)], { type: 'application/json' });
@@ -594,12 +577,12 @@ document.getElementById('restore').addEventListener('change', async (e) => {
       alert('Backup restored successfully!');
     }
   } catch(err){
-    alert('Invalid backup JSON file.');
+    alert('Invalid backup file.');
   }
 });
 
 async function wipe(){
-  if(confirm('Are you sure you want to delete all local snapshots?')){
+  if(confirm('Aap sach me sara local data delete karna chahte hain?')){
     let t = db.transaction('snapshots', 'readwrite');
     t.objectStore('snapshots').clear();
     t.oncomplete = () => {
@@ -612,7 +595,7 @@ async function wipe(){
   }
 }
 
-// Init
+// Initial boot
 openDB().then(async () => {
   let s = (await all()).sort((a,b) => b.id - a.id);
   snapshotCount = s.length;

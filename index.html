@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>A+ Trader Pro</title>
+<title>A+ Trader Pro (Auto NSE Fetch)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --primary:#315efb; --primary-soft:#eef2ff; --bg:#f5f7fb; --card-bg:#fff;
-  --text:#172033; --muted:#667085; --border:#e4e7ec;
+  --text:#172033; --muted:#667085; --border:#e4e7ec; --accent:#0ea5e9;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   color:var(--text);background:var(--bg)
 }
@@ -24,6 +24,7 @@ main{max-width:1050px;margin:auto;padding:12px}
 .btn{border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;transition:0.15s ease}
 .primary{background:var(--primary);color:#fff}.primary:hover{opacity:0.9}
 .soft{background:var(--primary-soft);color:var(--primary)}.soft:hover{background:#e0e7ff}
+.accent{background:#0284c7;color:#fff}.accent:hover{opacity:0.9}
 .danger{background:#fff0f0;color:#b42318}
 .drop{border:2px dashed #cbd5e1;border-radius:12px;padding:24px;text-align:center;color:var(--muted);background:#fcfcfd;cursor:pointer}
 .drop:hover{border-color:var(--primary);background:#f8faff}
@@ -48,9 +49,10 @@ main{max-width:1050px;margin:auto;padding:12px}
 .bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:30}
 .bottom button{background:none;border:0;font-weight:700;color:#475467;font-size:13px;cursor:pointer}
 .bottom button.active{color:var(--primary)}
-
-/* MODAL FIX: display none must have !important to prevent overlay hanging */
 .hidden{display:none !important;}
+
+/* Progress info */
+#fetchProgress{font-size:12px;margin-top:8px;color:var(--primary);font-weight:600}
 
 .modal-overlay{
   position:fixed;top:0;left:0;right:0;bottom:0;
@@ -84,6 +86,7 @@ main{max-width:1050px;margin:auto;padding:12px}
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div class="toolbar">
+        <button class="btn accent" id="btnNseFetch" onclick="fetchMissingFromNSE()">🌐 Fetch Missing From NSE</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
         <button class="btn soft" onclick="exportData('csv')">Export CSV</button>
         <button class="btn soft" onclick="exportData('xlsx')">Export Excel</button>
@@ -91,7 +94,8 @@ main{max-width:1050px;margin:auto;padding:12px}
         <button class="btn soft" onclick="document.getElementById('restore').click()">Restore</button>
         <input id="restore" class="hidden" type="file" accept=".json">
       </div>
-      <p class="muted" style="margin-top:8px;">Har file ko ek alag screener maana jata hai. Data indexedDB me save hota hai.</p>
+      <div id="fetchProgress" class="hidden"></div>
+      <p class="muted" style="margin-top:8px;">Agar file me sirf symbol/LTP hai, toh "Fetch Missing From NSE" dabayein. Yeh missing 52W High, Volume, RSI aur Moving Averages online nikal lega.</p>
     </div>
 
     <div class="kpis">
@@ -128,7 +132,7 @@ main{max-width:1050px;margin:auto;padding:12px}
   <section id="settings" class="hidden">
     <div class="card">
       <h3>⚙️ Device Data & Storage</h3>
-      <p class="muted" style="margin:8px 0 14px;">Aapka saara data aapke device par IndexedDB me rehta hai.</p>
+      <p class="muted" style="margin:8px 0 14px;">Data is kept entirely in your browser IndexedDB.</p>
       <button class="btn primary" onclick="backup()">Download Complete JSON Backup</button>
       <button class="btn danger" onclick="wipe()" style="margin-left:8px;">Clear All Data</button>
     </div>
@@ -141,14 +145,13 @@ main{max-width:1050px;margin:auto;padding:12px}
   <button id="nav-settings" onclick="tab('settings')">⚙️ Settings</button>
 </nav>
 
-<!-- Modal Container (Guaranteed Hidden by default) -->
 <div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
   <div class="modal" id="modal-content"></div>
 </div>
 
 <script>
 const DB='aplus_trader_db', VER=1;
-let db, ranked=[], snapshotCount=0;
+let db, ranked=[], snapshotCount=0, currentRawBatches=[];
 
 function escapeHtml(str){
   if(!str) return '';
@@ -186,14 +189,31 @@ function getNum(v){
   return Number.isFinite(n) ? n : NaN;
 }
 
-function getKey(r){
-  return String(r['NSE code']||r['NSE Code']||r['Symbol']||r['NSE']||r['Ticker']||'').trim().toUpperCase();
+function cleanKey(k){
+  return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function getVal(rows, names){
+function normalizeRow(r){
+  let norm = {};
+  for(let k in r){
+    norm[cleanKey(k)] = r[k];
+  }
+  return norm;
+}
+
+function getKey(r, norm){
+  const candidates = ['nsecode', 'symbol', 'nse', 'ticker', 'stockname', 'stock', 'company'];
+  for(let c of candidates){
+    if(norm[c]) return String(norm[c]).trim().toUpperCase();
+  }
+  return '';
+}
+
+function getVal(rows, searchKeys){
+  let targets = searchKeys.map(cleanKey);
   for(const r of rows){
-    for(const n of names){
-      if(r[n] !== undefined && r[n] !== '') return getNum(r[n]);
+    for(const t of targets){
+      if(r[t] !== undefined && r[t] !== '') return getNum(r[t]);
     }
   }
   return NaN;
@@ -202,9 +222,10 @@ function getVal(rows, names){
 function scoreStock(o){
   let rows = o.rows;
   let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close']);
-  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High']);
+  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'Week High']);
   let wh = getVal(rows, ['Week High', 'Weekly High']);
   let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14']);
+  let cci = getVal(rows, ['cci', 'CCI']);
   let d = getVal(rows, ['Trendlyne Durability Score', 'Durability']);
   let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum']);
   let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation']);
@@ -213,9 +234,10 @@ function scoreStock(o){
   let sm = getVal(rows, ['Month Change %', '1M Return']);
   let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
   let ni = getVal(rows, ['Nifty50 Month change %', 'Nifty Return']);
-  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10']);
-  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20']);
-  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50']);
+  let e5 = getVal(rows, ['ema5', 'EMA5', 'EMA 5']);
+  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10', 'ema5']);
+  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20']);
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50']);
   let s200 = getVal(rows, ['Day SMA200', 'SMA200', 'SMA 200']);
   let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
   let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
@@ -233,27 +255,33 @@ function scoreStock(o){
     }
   };
 
-  add('Multi-Screener Match', 30, rows.length >= 4, true, `Found in ${rows.length} screener(s)`);
-  add('Price > EMA10', 3, p > e10, Number.isFinite(p) && Number.isFinite(e10), `₹${p} > ₹${e10}`);
-  add('Price > EMA20', 3, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
-  add('Price > SMA50', 3, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
-  add('Golden Structure (50 > 200 SMA)', 6, s50 > s200, Number.isFinite(s50) && Number.isFinite(s200), `50SMA (${s50}) > 200SMA (${s200})`);
+  add('Multi-Screener Match', 20, rows.length >= 2, true, `Found in ${rows.length} file(s)`);
+  add('Price > Short EMA', 5, p > (Number.isFinite(e10) ? e10 : e5), Number.isFinite(p) && (Number.isFinite(e10) || Number.isFinite(e5)), `₹${p} > ₹${e10||e5}`);
+  add('Price > EMA20', 10, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
+  add('Price > 50MA', 10, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
+  add('Golden Alignment (20 > 50)', 10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50), `EMA20 (${e20}) > EMA50 (${s50})`);
 
   let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
-  add('Near 52W High (<= 5%)', 15, gap >= 0 && gap <= 5, Number.isFinite(gap), `${gap ? gap.toFixed(1) : ''}% away from 52W High`);
+  add('Near 52W High (<= 5%)', 10, gap >= 0 && gap <= 5, Number.isFinite(gap), `${gap ? gap.toFixed(1) : ''}% away`);
 
-  add('Sector Outperformance', 7, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
-  add('Market Outperformance', 4, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
+  add('Sector Outperformance', 5, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
+  add('Market Outperformance', 5, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
 
   let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
-  add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly average`);
-  add('Momentum (RSI 60-75)', 5, rsi >= 60 && rsi <= 75, Number.isFinite(rsi), `RSI: ${rsi}`);
-  add('High Durability (> 65)', 4, d > 65, Number.isFinite(d), `Durability: ${d}`);
-  add('Momentum Score (> 59)', 4, m > 59, Number.isFinite(m), `Score: ${m}`);
-  add('Valuation (> 40)', 4, v > 40, Number.isFinite(v), `Valuation: ${v}`);
+  add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly avg`);
+  
+  if(Number.isFinite(rsi)){
+    add('Momentum (RSI 60-75)', 10, rsi >= 60 && rsi <= 75, true, `RSI: ${rsi}`);
+  } else if(Number.isFinite(cci)){
+    add('Momentum (CCI > 100)', 10, cci >= 100, true, `CCI: ${cci}`);
+  }
 
-  let score = max ? Math.min(100, (pts / max) * 100) : 0;
-  let grade = score >= 85 ? 'A+' : score >= 75 ? 'A' : score >= 60 ? 'Watchlist' : 'Avoid';
+  add('High Durability (> 65)', 5, d > 65, Number.isFinite(d), `Durability: ${d}`);
+  add('Momentum Score (> 59)', 5, m > 59, Number.isFinite(m), `Score: ${m}`);
+  add('Valuation (> 40)', 5, v > 40, Number.isFinite(v), `Valuation: ${v}`);
+
+  let score = max ? Math.min(100, (pts / max) * 100) : 50;
+  let grade = score >= 80 ? 'A+' : score >= 65 ? 'A' : score >= 50 ? 'Watchlist' : 'Avoid';
 
   let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
   let entry = Number.isFinite(resistance) ? resistance * 1.005 : p;
@@ -267,19 +295,19 @@ function scoreStock(o){
   let t2 = entry + 3 * risk;
   let rr = risk > 0 ? (t1 - entry) / risk : NaN;
 
-  let critical = [p, resistance, e20, rsi, vr].every(Number.isFinite);
-  let breakout = critical && p >= resistance * 0.99;
-  let action = (score >= 80 && critical && breakout && p > e20 && vr >= 1.25 && rsi >= 58 && rsi <= 75) ? 'BUY' : score >= 70 ? 'WAIT' : 'AVOID';
+  let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
+  let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
 
   let missing = [];
   if (!Number.isFinite(p)) missing.push('Price');
-  if (!Number.isFinite(resistance)) missing.push('Resistance / 52W High');
   if (!Number.isFinite(e20)) missing.push('EMA20');
-  if (!Number.isFinite(rsi)) missing.push('RSI');
+  if (!Number.isFinite(hi)) missing.push('52W High');
+  if (!Number.isFinite(rsi) && !Number.isFinite(cci)) missing.push('RSI/CCI');
   if (!Number.isFinite(vr)) missing.push('Volume');
 
   return {
     stock: o.stock, key: o.key, price: Number.isFinite(p) ? p : '-',
+    sector: o.sector,
     score: +score.toFixed(1), grade, action,
     entry: Number.isFinite(entry) ? +entry.toFixed(2) : '-',
     stop: Number.isFinite(stop) ? +stop.toFixed(2) : '-',
@@ -290,9 +318,116 @@ function scoreStock(o){
     screenerNames: [...new Set(o.rows.map(r => r._screenerName).filter(Boolean))],
     gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
     vr: Number.isFinite(vr) ? +vr.toFixed(2) : '-',
-    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : '-',
+    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
     pts, max, factors, missing
   };
+}
+
+// Technical calculation helpers for online data
+function calcRSI(closes, period = 14) {
+  if (closes.length <= period) return NaN;
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    let diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  let avgG = gains / period, avgL = losses / period;
+  for (let i = period + 1; i < closes.length; i++) {
+    let diff = closes[i] - closes[i - 1];
+    avgG = (avgG * (period - 1) + (diff > 0 ? diff : 0)) / period;
+    avgL = (avgL * (period - 1) + (diff < 0 ? -diff : 0)) / period;
+  }
+  if (avgL === 0) return 100;
+  let rs = avgG / avgL;
+  return 100 - (100 / (1 + rs));
+}
+
+function calcEMA(closes, period) {
+  if (closes.length < period) return NaN;
+  let k = 2 / (period + 1);
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calcSMA(closes, period) {
+  if (closes.length < period) return NaN;
+  let slice = closes.slice(-period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+// Auto-fetch missing indicators from NSE/Yahoo Finance mirror
+async function fetchMissingFromNSE() {
+  if (!ranked.length) {
+    alert("Pehle CSV/Excel file upload karein!");
+    return;
+  }
+  
+  const prog = document.getElementById('fetchProgress');
+  prog.classList.remove('hidden');
+  const btn = document.getElementById('btnNseFetch');
+  btn.disabled = true;
+
+  let updatedCount = 0;
+  for (let i = 0; i < ranked.length; i++) {
+    let item = ranked[i];
+    let sym = item.key;
+    prog.textContent = `Fetching NSE market data (${i + 1}/${ranked.length}): ${sym}...`;
+
+    try {
+      // Free public query mirror for NSE (.NS ticker)
+      let url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=1y&interval=1d`;
+      // Use AllOrigins proxy to bypass browser CORS block
+      let proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      
+      let res = await fetch(proxyUrl);
+      if (!res.ok) continue;
+      let json = await res.json();
+
+      let result = json?.chart?.result?.[0];
+      if (result) {
+        let meta = result.meta;
+        let quotes = result.indicators?.quote?.[0];
+        let closes = (quotes?.close || []).filter(Number.isFinite);
+        let volumes = (quotes?.volume || []).filter(Number.isFinite);
+
+        let livePrice = meta?.regularMarketPrice || closes[closes.length - 1];
+        let high52 = meta?.fiftyTwoWeekHigh || Math.max(...closes);
+        let dayVol = volumes[volumes.length - 1] || 0;
+        let monthAvgVol = volumes.slice(-22).reduce((a, b) => a + b, 0) / Math.min(22, volumes.length);
+        let rsiVal = calcRSI(closes, 14);
+        let ema20Val = calcEMA(closes, 20);
+        let sma50Val = calcSMA(closes, 50);
+        let sma200Val = calcSMA(closes, 200);
+
+        // Inject fetched data back into rows
+        currentRawBatches.forEach(batch => {
+          batch.forEach(row => {
+            if (getKey(row._raw, row) === sym) {
+              if (!row.currentprice && livePrice) row.currentprice = livePrice;
+              if (!row['1yrhigh'] && high52) row['1yrhigh'] = high52;
+              if (!row.dayvolume && dayVol) row.dayvolume = dayVol;
+              if (!row.monthvolumeavg && monthAvgVol) row.monthvolumeavg = monthAvgVol;
+              if (!row.dayrsi && rsiVal) row.dayrsi = +rsiVal.toFixed(1);
+              if (!row.dayema20 && ema20Val) row.dayema20 = +ema20Val.toFixed(2);
+              if (!row.daysma50 && sma50Val) row.daysma50 = +sma50Val.toFixed(2);
+              if (!row.daysma200 && sma200Val) row.daysma200 = +sma200Val.toFixed(2);
+            }
+          });
+        });
+        updatedCount++;
+      }
+    } catch (e) {
+      console.warn(`Could not fetch data for ${sym}:`, e);
+    }
+  }
+
+  prog.textContent = `Completed! Updated technical data for ${updatedCount} stocks from NSE.`;
+  btn.disabled = false;
+  ranked = processAllRows(currentRawBatches);
+  render();
 }
 
 async function parseFile(file){
@@ -307,9 +442,12 @@ async function parseFile(file){
   }
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  
   return jsonRows.map(row => {
-    row._screenerName = file.name.replace(/\.[^/.]+$/, "");
-    return row;
+    let norm = normalizeRow(row);
+    norm._raw = row;
+    norm._screenerName = file.name.replace(/\.[^/.]+$/, "");
+    return norm;
   });
 }
 
@@ -317,12 +455,13 @@ function processAllRows(allScreenerBatches){
   let map = new Map();
   allScreenerBatches.forEach(rows => {
     rows.forEach(r => {
-      let k = getKey(r);
+      let k = getKey(r._raw, r);
       if(!k) return;
       if(!map.has(k)){
         map.set(k, {
           key: k,
-          stock: r['Stock Name'] || r['StockName'] || r['Company'] || k,
+          stock: r.stockname || r.company || r.stock || k,
+          sector: r.sector || '',
           rows: []
         });
       }
@@ -346,16 +485,17 @@ document.getElementById('files').addEventListener('change', async (e) => {
     }
   }
   if(!parsedBatches.length){
-    alert('Files parse nahi ho sake. Please valid CSV ya Excel file check karein.');
+    alert('Files could not be parsed.');
     return;
   }
+  currentRawBatches = parsedBatches;
   ranked = processAllRows(parsedBatches);
   let snap = { id: Date.now(), date: new Date().toISOString(), files: parsedBatches.length, results: ranked };
   await put(snap);
   snapshotCount = (await all()).length;
   render();
   loadHistory();
-  statusEl('Saved locally • ' + new Date().toLocaleTimeString());
+  statusEl('Loaded ' + ranked.length + ' stocks • ' + new Date().toLocaleTimeString());
 });
 
 function statusEl(msg){ document.getElementById('status').textContent = msg; }
@@ -378,7 +518,7 @@ function render(){
         <div class="row">
           <div>
             <div class="stock">${i+1}. ${escapeHtml(x.stock)} (${escapeHtml(x.key)})</div>
-            <div class="muted">Price: ₹${x.price} • ${x.screeners} screener matches</div>
+            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + escapeHtml(x.sector) : ''} • ${x.screeners} file match</div>
           </div>
           <div class="score">${x.score}</div>
         </div>
@@ -392,7 +532,7 @@ function render(){
           <div class="metric">T1<b>₹${x.t1}</b></div>
           <div class="metric">T2<b>₹${x.t2}</b></div>
           <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
-          <div class="metric">Volume<b>${x.vr}${x.vr!=='-'?'x':''}</b></div>
+          <div class="metric">Momentum<b>${x.rsi}</b></div>
         </div>
       </div>
     `).join('');
@@ -436,15 +576,14 @@ function openModal(symbol){
     ${x.missing.length ? `
       <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
         <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
+        <br><span style="color:#667085;">Tap "Fetch Missing From NSE" to fill these automatically.</span>
       </div>
     ` : ''}
   `;
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function closeModal(){ 
-  document.getElementById('modal').classList.add('hidden'); 
-}
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
 
 function tab(tabId){
   ['home','history','settings'].forEach(id => {
@@ -482,43 +621,20 @@ async function restoreSnapshot(id){
 }
 
 function runDemo(){
-  const makeStock = (symbol, name, price, rsi, d, m, v, volRatio, nearHigh) => ({
-    'NSE code': symbol,
-    'Stock Name': name,
-    'Current Price': price,
-    '1Yr High': nearHigh ? price * 1.02 : price * 1.3,
-    'Day RSI': rsi,
-    'Trendlyne Durability Score': d,
-    'Trendlyne Momentum Score': m,
-    'Trendlyne Valuation Score': v,
-    'Day EMA10': price * 0.98,
-    'Day EMA20': price * 0.95,
-    'Day SMA50': price * 0.92,
-    'Day SMA200': price * 0.85,
-    'Day Volume': 500000 * volRatio,
-    'Month Volume Avg': 500000,
-    'Month Change %': 12,
-    'Sector Month Change %': 8,
-    'Nifty50 Month change %': 3,
-    '_screenerName': 'High_Momentum'
-  });
-
-  const demoScreeners = [
+  const demoData = [
     [
-      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true),
-      makeStock('BEL', 'Bharat Electronics', 315, 64, 78, 65, 58, 1.6, true),
-      makeStock('RELIANCE', 'Reliance Industries', 2950, 48, 60, 50, 45, 0.9, false)
-    ],
-    [
-      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true),
-      makeStock('BEL', 'Bharat Electronics', 315, 64, 78, 65, 58, 1.6, true)
-    ],
-    [
-      makeStock('TRENT', 'Trent Ltd.', 7120, 68, 72, 75, 52, 2.1, true)
+      { 'Stock name': 'TRENT', 'LTP': 7120, 'ema5': 7000, 'ema20': 6850, 'ema50': 6400, 'cci': 130, 'Sector': 'Retail', _screenerName: 'Demo_Breakout' },
+      { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'ema50': 285, 'cci': 115, 'Sector': 'Defense', _screenerName: 'Demo_Breakout' }
     ]
   ];
-
-  ranked = processAllRows(demoScreeners);
+  let batches = demoData.map(batch => batch.map(r => {
+    let norm = normalizeRow(r);
+    norm._raw = r;
+    norm._screenerName = r._screenerName;
+    return norm;
+  }));
+  currentRawBatches = batches;
+  ranked = processAllRows(batches);
   render();
   statusEl('Demo data loaded successfully!');
 }
@@ -540,7 +656,7 @@ function exportData(type){
     Screeners: x.screeners,
     Gap52W: x.gap,
     VolumeRatio: x.vr,
-    RSI: x.rsi
+    RSI_CCI: x.rsi
   }));
 
   let ws = XLSX.utils.json_to_sheet(rows);
@@ -595,7 +711,6 @@ async function wipe(){
   }
 }
 
-// Initial boot
 openDB().then(async () => {
   let s = (await all()).sort((a,b) => b.id - a.id);
   snapshotCount = s.length;

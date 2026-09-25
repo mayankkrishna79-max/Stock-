@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A+ Trader Pro</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<title>A+ Trader Pro (Native Engine)</title>
 <style>
 :root{
   --primary:#2563eb; --bg:#0b1120; --card-bg:#1e293b; --text:#f8fafc;
@@ -14,7 +13,7 @@
   color:var(--text);background:var(--bg)
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{padding-bottom:40px}
+body{padding-bottom:50px}
 header{background:#070d19;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 header h1{font-size:18px;font-weight:800}
 header small{color:var(--muted);font-size:11px}
@@ -27,7 +26,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 .accent{background:#0284c7;color:#fff}
 
 .upload-box{border:2px dashed #475569;border-radius:12px;padding:18px;text-align:center;background:#131d31}
-.file-input{width:100%;max-width:320px;margin:8px auto 0;padding:8px;background:#0b1120;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px}
+.file-input{width:100%;max-width:320px;margin:10px auto 0;padding:10px;background:#0b1120;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px;display:block}
 
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:10px;background:#131d31}
@@ -53,6 +52,8 @@ main{max-width:1100px;margin:auto;padding:12px}
 .metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
 .metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
 
+.log-box{max-height:80px;overflow-y:auto;background:#070d19;border:1px solid var(--border);padding:8px;border-radius:8px;font-family:monospace;font-size:11px;color:#38bdf8;margin-top:8px}
+
 @media(min-width:700px){
   .grid{grid-template-columns:repeat(6,1fr)}
   .kpis{grid-template-columns:repeat(5,1fr)}
@@ -64,22 +65,23 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Ready to load files</small>
+    <small id="status">Standby • Ready for files</small>
   </div>
 </header>
 
 <main>
   <div class="card">
     <div class="upload-box">
-      <b>📁 Screener File Upload (.CSV / .XLSX / .XLS)</b><br>
-      <span style="font-size:11px;color:var(--muted);">Neeche button par tap karke file select karein:</span><br>
-      <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-input" onchange="handleFileSelect(event)">
+      <b style="font-size:14px;">📁 Screener File Upload (.CSV)</b><br>
+      <span style="font-size:12px;color:var(--muted);">Tap Choose File to select your Screener:</span>
+      <input id="files" type="file" accept=".csv,.txt" class="file-input" onchange="handleFileSelect(event)">
     </div>
     <div class="toolbar">
       <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
       <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
       <button class="btn danger" onclick="clearData()">🗑 Clear Data</button>
     </div>
+    <div id="log" class="log-box">Log: App started. Select CSV file or tap Load Demo.</div>
   </div>
 
   <div class="kpis">
@@ -110,6 +112,13 @@ const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyOsZ9j-RnFWhjFXQ-
 
 let currentStockMap = new Map();
 let ranked = [];
+
+function log(msg){
+  let el = document.getElementById('log');
+  if(el){
+    el.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + el.innerHTML;
+  }
+}
 
 function cleanKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
@@ -162,4 +171,277 @@ function scoreStock(o){
   let e5 = getVal(rows, ['ema5', 'EMA5', 'EMA 5']);
   let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10', 'ema5']);
   let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20', 'dayema20']);
-  let s50 = getVal(rows,
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50', 'daysma50']);
+  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
+  let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
+  let support = getVal(rows, ['Support', 'Support 1', 'S1']);
+  let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
+
+  let missing = [];
+  if (!Number.isFinite(p)) missing.push('Price');
+  if (!Number.isFinite(hi)) missing.push('52W High');
+  if (!Number.isFinite(e20)) missing.push('EMA20');
+  if (!Number.isFinite(rsi) && !Number.isFinite(cci)) missing.push('RSI');
+  if (!Number.isFinite(dv) && !Number.isFinite(mv)) missing.push('Volume');
+
+  let pts = 0, max = 0;
+  const add = (w, ok, available) => {
+    if(available){
+      max += w;
+      if(ok) pts += w;
+    }
+  };
+
+  add(20, rows.length >= 2, true);
+  add(5, p > (Number.isFinite(e10) ? e10 : e5), Number.isFinite(p) && (Number.isFinite(e10) || Number.isFinite(e5)));
+  add(10, p > e20, Number.isFinite(p) && Number.isFinite(e20));
+  add(10, p > s50, Number.isFinite(p) && Number.isFinite(s50));
+  add(10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50));
+
+  let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
+  add(10, gap >= 0 && gap <= 5, Number.isFinite(gap));
+  add(5, sm > sec, Number.isFinite(sm) && Number.isFinite(sec));
+  add(5, sec > ni, Number.isFinite(sec) && Number.isFinite(ni));
+
+  let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
+  add(10, vr >= 1.5, Number.isFinite(vr));
+  
+  if(Number.isFinite(rsi)){
+    add(10, rsi >= 60 && rsi <= 75, true);
+  } else if(Number.isFinite(cci)){
+    add(10, cci >= 100, true);
+  }
+
+  add(5, d > 65, Number.isFinite(d));
+  add(5, m > 59, Number.isFinite(m));
+  add(5, v > 40, Number.isFinite(v));
+
+  let score = max ? Math.min(100, (pts / max) * 100) : 50;
+  let grade = score >= 80 ? 'A+' : score >= 65 ? 'A' : score >= 50 ? 'Watchlist' : 'Avoid';
+
+  let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
+  let entry = Number.isFinite(resistance) ? +(resistance * 1.005).toFixed(2) : (Number.isFinite(p) ? p : '-');
+  let supportLevel = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
+  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(p) ? p * 0.03 : 1);
+  let stop = Number.isFinite(supportLevel) ? +(supportLevel - buffer).toFixed(2) : (entry !== '-' ? +(entry * 0.97).toFixed(2) : '-');
+  
+  let risk = (entry !== '-' && stop !== '-') ? (entry - stop) : NaN;
+  let t1 = Number.isFinite(risk) && risk > 0 ? +(entry + 2 * risk).toFixed(2) : '-';
+  let t2 = Number.isFinite(risk) && risk > 0 ? +(entry + 3 * risk).toFixed(2) : '-';
+
+  let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
+  let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
+
+  return {
+    stock: o.stock || o.key, key: o.key,
+    price: Number.isFinite(p) ? p : '-',
+    sector: o.sector || '',
+    score: +score.toFixed(1), grade, action,
+    entry, stop, t1, t2,
+    screeners: rows.length,
+    gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
+    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
+    missing
+  };
+}
+
+function rebuildRankedFromMap(){
+  let list = [];
+  currentStockMap.forEach(stockObj => list.push(scoreStock(stockObj)));
+  ranked = list.sort((a,b) => b.score - a.score);
+  return ranked;
+}
+
+// Native Text-Based CSV Line Splitter (Zero CDN Library Dependency)
+function parseCSVText(text) {
+  let lines = text.split(/\r\n|\n/).filter(line => line.trim().length > 0);
+  if(lines.length < 2) return [];
+
+  function splitLine(line) {
+    let result = [];
+    let insideQuotes = false;
+    let entry = '';
+    for (let i = 0; i < line.length; i++) {
+      let char = line[i];
+      if (char === '"') {
+        insideQuotes = !insideQuotes;
+      } else if (char === ',' && !insideQuotes) {
+        result.push(entry.trim());
+        entry = '';
+      } else {
+        entry += char;
+      }
+    }
+    result.push(entry.trim());
+    return result;
+  }
+
+  let headers = splitLine(lines[0]).map(h => h.replace(/^["']|["']$/g, ''));
+  let rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    let values = splitLine(lines[i]).map(v => v.replace(/^["']|["']$/g, ''));
+    let row = {};
+    headers.forEach((h, idx) => {
+      row[h] = values[idx] || '';
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function handleFileSelect(e){
+  let file = e.target.files[0];
+  if(!file) return;
+
+  log(`Reading file: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`);
+  document.getElementById('status').textContent = `Reading ${file.name}...`;
+
+  let reader = new FileReader();
+  reader.onload = function(evt){
+    try {
+      let text = evt.target.result;
+      let rows = parseCSVText(text);
+
+      if(!rows.length){
+        log("Error: File me koi data rows nahi mili.");
+        alert("File khali hai ya CSV format me nahi hai.");
+        return;
+      }
+
+      rows.forEach(row => {
+        let norm = normalizeRow(row);
+        norm._raw = row;
+        let k = getKey(row, norm);
+        if(!k) return;
+        if(!currentStockMap.has(k)) {
+          currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
+        }
+        currentStockMap.get(k).rows.push(norm);
+      });
+
+      rebuildRankedFromMap();
+      renderScreener();
+      log(`Success: ${ranked.length} unique stocks loaded.`);
+      document.getElementById('status').textContent = `Loaded ${ranked.length} stocks successfully!`;
+    } catch(err) {
+      log(`Error parsing file: ${err.message}`);
+      alert("File parse nahi ho saki: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderScreener(){
+  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
+  let a = document.getElementById('act')?.value || 'All';
+  let filtered = ranked.filter(x => {
+    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
+    let matchAction = a === 'All' || x.action === a;
+    return matchQuery && matchAction;
+  });
+
+  let el = document.getElementById('screenerList');
+  if(!filtered.length){
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+  } else {
+    el.innerHTML = filtered.map((x, i) => `
+      <div class="item">
+        <div class="row">
+          <div>
+            <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
+            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
+          </div>
+          <div class="score">${x.score}</div>
+        </div>
+
+        <div class="tags">
+          <span class="tag tag-hold">Grade ${x.grade}</span>
+          <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
+          ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
+        </div>
+
+        <div class="grid">
+          <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
+          <div class="metric">Stop-Loss<b>₹${x.stop}</b></div>
+          <div class="metric">Target 1<b>₹${x.t1}</b></div>
+          <div class="metric">Target 2<b>₹${x.t2}</b></div>
+          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
+          <div class="metric">Momentum<b>${x.rsi}</b></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  document.getElementById('n').textContent = ranked.length;
+  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
+  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
+  document.getElementById('missingCount').textContent = missingTotal;
+  document.getElementById('top').textContent = ranked[0]?.score || 0;
+}
+
+async function startSafeSync(){
+  let queue = [...currentStockMap.keys()];
+  if(!queue.length){ alert("Pehle CSV file upload karein ya demo load karein!"); return; }
+
+  log(`Starting Google Finance Sync for ${queue.length} stocks...`);
+  document.getElementById('status').textContent = "Syncing live data...";
+  const CHUNK = 8;
+  while(queue.length > 0){
+    let batch = queue.splice(0, CHUNK);
+    try {
+      let res = await fetch(`${GAS_ENDPOINT}?symbols=${encodeURIComponent(batch.join(','))}`);
+      if(res.ok){
+        let dataMap = await res.json();
+        if(dataMap && typeof dataMap === 'object'){
+          for(let sym of batch){
+            let item = dataMap[sym] || dataMap[sym.toUpperCase()];
+            if(item && item.price){
+              if(currentStockMap.has(sym)){
+                let target = currentStockMap.get(sym).rows[0];
+                target.currentprice = Number(item.price);
+                if(item.high52) target['1yrhigh'] = Number(item.high52);
+                if(item.volume) target.dayvolume = Number(item.volume);
+              }
+            }
+          }
+        }
+      }
+    } catch(e){}
+  }
+
+  rebuildRankedFromMap();
+  renderScreener();
+  log("Sync completed successfully.");
+  document.getElementById('status').textContent = "Sync complete • " + new Date().toLocaleTimeString();
+  alert("100% Google Finance Sync Completed!");
+}
+
+function runDemo(){
+  log("Loading demo data...");
+  const demoData = [
+    { 'Stock name': 'TRENT', 'LTP': 7120, '1Yr High': 7250, 'ema20': 6850, 'ema50': 6400, 'RSI': 68 },
+    { 'Stock name': 'BEL', 'LTP': 315, '1Yr High': 340, 'ema20': 298, 'ema50': 282, 'RSI': 64 },
+    { 'Stock name': 'DIXON', 'LTP': 13200, '1Yr High': 13450, 'ema20': 12800, 'ema50': 12100, 'RSI': 71 }
+  ];
+  demoData.forEach(r => {
+    let norm = normalizeRow(r); norm._raw = r;
+    currentStockMap.set(r['Stock name'], { key: r['Stock name'], stock: r['Stock name'], rows: [norm] });
+  });
+  rebuildRankedFromMap();
+  renderScreener();
+  log("Demo data loaded (3 stocks).");
+  document.getElementById('status').textContent = "Demo loaded!";
+}
+
+function clearData(){
+  currentStockMap.clear();
+  ranked = [];
+  renderScreener();
+  log("Cleared all stock data.");
+  document.getElementById('status').textContent = "Data cleared!";
+}
+</script>
+</body>
+</html>

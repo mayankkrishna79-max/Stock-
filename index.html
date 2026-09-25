@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>A+ Trader Pro (100% Google Finance Auto-Sync)</title>
+<title>A+ Trader Pro (Smart Fast Sync)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -52,10 +52,9 @@ main{max-width:1050px;margin:auto;padding:12px}
 .bottom button.active{color:var(--primary)}
 .hidden{display:none !important;}
 
-/* Live Sync Progress Bar */
 #syncContainer{margin-top:12px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px}
 .progress-bar-bg{height:8px;width:100%;background:#e0f2fe;border-radius:99px;margin:8px 0;overflow:hidden}
-.progress-bar-fill{height:100%;width:0%;background:#0284c7;transition:width 0.3s ease}
+.progress-bar-fill{height:100%;width:0%;background:#0284c7;transition:width 0.25s ease}
 
 .modal-overlay{
   position:fixed;top:0;left:0;right:0;bottom:0;
@@ -89,7 +88,7 @@ main{max-width:1050px;margin:auto;padding:12px}
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div class="toolbar">
-        <button class="btn accent" id="btnSync" onclick="startInfiniteGoogleSync()">⚡ 100% Google Finance Auto-Complete</button>
+        <button class="btn accent" id="btnSync" onclick="startSelectiveFastSync()">⚡ Fast Sync (Only Missing Data)</button>
         <button class="btn danger hidden" id="btnStopSync" onclick="stopGoogleSync()">⏹ Stop Sync</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
         <button class="btn soft" onclick="exportData('csv')">Export CSV</button>
@@ -99,19 +98,18 @@ main{max-width:1050px;margin:auto;padding:12px}
         <input id="restore" class="hidden" type="file" accept=".json">
       </div>
 
-      <!-- Sync Progress Window -->
       <div id="syncContainer" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#0369a1;">
-          <span id="syncText">Connecting to Google Finance...</span>
+          <span id="syncText">Preparing selective fast sync...</span>
           <span id="syncPercent">0%</span>
         </div>
         <div class="progress-bar-bg">
           <div id="progressFill" class="progress-bar-fill"></div>
         </div>
-        <small id="syncDetails" style="font-size:11px;color:#0284c7;">Auto-retrying any failed stock until 100% complete.</small>
+        <small id="syncDetails" style="font-size:11px;color:#0284c7;">Targeting only stocks with missing critical indicators.</small>
       </div>
 
-      <p class="muted" style="margin-top:8px;">Blue button dabane par Google Finance engine tab tak loop chalayega jab tak 100% stocks ka 52W High, Volume, RSI aur Moving Averages complete na ho jaye.</p>
+      <p class="muted" style="margin-top:8px;">Fast Sync sirf unhi stocks ko fetch karta hai jinke 52W High, Volume, ya Moving Averages file me missing hain.</p>
     </div>
 
     <div class="kpis">
@@ -340,7 +338,7 @@ function scoreStock(o){
   };
 }
 
-// Math calculation helpers for real-time market bars
+// Indicator math functions
 function calcRSI(closes, period = 14) {
   if (closes.length <= period) return NaN;
   let gains = 0, losses = 0;
@@ -376,7 +374,7 @@ function calcSMA(closes, period) {
 }
 
 // -------------------------------------------------------------
-// GOOGLE FINANCE / PROXY AUTO-SYNC ENGINE (UNTIL 100% DONE)
+// SELECTIVE FAST SYNC ENGINE
 // -------------------------------------------------------------
 const PROXIES = [
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -389,7 +387,7 @@ async function fetchFromMultiProxy(targetUrl) {
     try {
       const pUrl = proxyFn(targetUrl);
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 6000);
+      const tid = setTimeout(() => ctrl.abort(), 4500); // Fast 4.5s timeout per proxy
       const res = await fetch(pUrl, { signal: ctrl.signal });
       clearTimeout(tid);
       if (res.ok) {
@@ -401,25 +399,19 @@ async function fetchFromMultiProxy(targetUrl) {
   return null;
 }
 
-// Parse Google Finance raw HTML directly
 function parseGoogleFinanceHTML(html) {
   try {
     let doc = new DOMParser().parseFromString(html, 'text/html');
     let text = doc.body.textContent || '';
-    
-    // Extract 52-wk range or high
     let high52 = NaN, vol = NaN, price = NaN;
-    
-    // Look for price
+
     let priceMatch = text.match(/₹\s?([0-9,]+(\.[0-9]+)?)/);
     if(priceMatch) price = parseFloat(priceMatch[1].replace(/,/g,''));
 
-    // Look for 52-wk high regex pattern: "52-week high ... ₹xxx" or "Range ... - ₹xxx"
     let rangeMatch = text.match(/52-wk high[^₹\d]*₹?\s*([0-9,]+\.?[0-9]*)/i) || 
                      text.match(/Year range[^₹\d]*[0-9,.]+\s*-\s*([0-9,.]+)/i);
     if(rangeMatch) high52 = parseFloat(rangeMatch[1].replace(/,/g,''));
 
-    // Volume match
     let volMatch = text.match(/Avg Volume[^0-9]*([0-9,.]+)\s*([KMBkmb]?)/i) || text.match(/Volume[^0-9]*([0-9,.]+)\s*([KMBkmb]?)/i);
     if(volMatch){
       let num = parseFloat(volMatch[1].replace(/,/g,''));
@@ -436,17 +428,12 @@ function parseGoogleFinanceHTML(html) {
 }
 
 async function fetchStockMarketData(sym) {
-  // Method 1: Google Finance HTML scrape
-  let gfUrl = `https://www.google.com/finance/quote/${encodeURIComponent(sym)}:NSE`;
-  let gfHtml = await fetchFromMultiProxy(gfUrl);
-  let gfData = gfHtml ? parseGoogleFinanceHTML(gfHtml) : null;
-
-  // Method 2: Comprehensive Chart Mirror for RSI / moving averages
-  let mirrorUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=1y&interval=1d`;
-  let chartDataText = await fetchFromMultiProxy(mirrorUrl);
-  
+  // Direct Yahoo chart data (most accurate for exact Close, 52W High, Volume, MAs, and RSI)
+  let yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=1y&interval=1d`;
+  let chartDataText = await fetchFromMultiProxy(yfUrl);
   let chartObj = null;
-  if(chartDataText){
+
+  if (chartDataText) {
     try { chartObj = JSON.parse(chartDataText)?.chart?.result?.[0]; } catch(e){}
   }
 
@@ -454,14 +441,26 @@ async function fetchStockMarketData(sym) {
   let volumes = (chartObj?.indicators?.quote?.[0]?.volume || []).filter(Number.isFinite);
   let meta = chartObj?.meta || {};
 
-  let finalPrice = gfData?.price || meta.regularMarketPrice || (closes.length ? closes[closes.length - 1] : NaN);
-  let finalHigh52 = gfData?.high52 || meta.fiftyTwoWeekHigh || (closes.length ? Math.max(...closes) : NaN);
-  let finalDayVol = (volumes.length ? volumes[volumes.length - 1] : NaN) || gfData?.vol || NaN;
-  let finalAvgVol = volumes.length >= 20 ? (volumes.slice(-22).reduce((a,b)=>a+b,0)/22) : (gfData?.vol || NaN);
+  let finalPrice = meta.regularMarketPrice || (closes.length ? closes[closes.length - 1] : NaN);
+  let finalHigh52 = meta.fiftyTwoWeekHigh || (closes.length ? Math.max(...closes) : NaN);
+  let finalDayVol = volumes.length ? volumes[volumes.length - 1] : NaN;
+  let finalAvgVol = volumes.length >= 20 ? (volumes.slice(-22).reduce((a,b)=>a+b,0)/22) : NaN;
 
   let rsiVal = closes.length >= 15 ? calcRSI(closes, 14) : NaN;
   let ema20Val = closes.length >= 20 ? calcEMA(closes, 20) : NaN;
   let sma50Val = closes.length >= 50 ? calcSMA(closes, 50) : NaN;
+
+  // Fallback to Google Finance HTML if primary quote is missing
+  if (!Number.isFinite(finalPrice) || !Number.isFinite(finalHigh52)) {
+    let gfUrl = `https://www.google.com/finance/quote/${encodeURIComponent(sym)}:NSE`;
+    let gfHtml = await fetchFromMultiProxy(gfUrl);
+    if (gfHtml) {
+      let gfData = parseGoogleFinanceHTML(gfHtml);
+      if (!Number.isFinite(finalPrice)) finalPrice = gfData.price;
+      if (!Number.isFinite(finalHigh52)) finalHigh52 = gfData.high52;
+      if (!Number.isFinite(finalDayVol)) finalDayVol = gfData.vol;
+    }
+  }
 
   if (Number.isFinite(finalPrice) || Number.isFinite(finalHigh52)) {
     return {
@@ -481,15 +480,24 @@ function stopGoogleSync() {
   isSyncRunning = false;
   document.getElementById('btnStopSync').classList.add('hidden');
   document.getElementById('btnSync').disabled = false;
-  document.getElementById('syncText').textContent = 'Sync stopped by user.';
+  document.getElementById('syncText').textContent = 'Sync paused.';
 }
 
-async function startInfiniteGoogleSync() {
+async function startSelectiveFastSync() {
   if (!ranked.length) {
     alert("Pehle CSV/Excel file upload karein!");
     return;
   }
-  
+
+  // Filter ONLY stocks that have missing critical fields
+  let missingTargets = ranked.filter(x => x.missing && x.missing.length > 0).map(x => x.key);
+  let queue = [...new Set(missingTargets)];
+
+  if (queue.length === 0) {
+    alert("Sabhi stocks ka critical data already complete hai! Koi fetch karne ki zaroorat nahi.");
+    return;
+  }
+
   isSyncRunning = true;
   const syncBox = document.getElementById('syncContainer');
   const syncText = document.getElementById('syncText');
@@ -503,28 +511,17 @@ async function startInfiniteGoogleSync() {
   btnStop.classList.remove('hidden');
   btn.disabled = true;
 
-  // Queue of symbols that still have missing critical values
-  let queue = [...new Set(ranked.map(x => x.key))];
-  let totalUnique = queue.length;
-  let completed = new Set();
+  let totalToSync = queue.length;
+  let completed = 0;
+  const CONCURRENCY = 3; // 3 parallel calls for maximum speed
 
-  let attempt = 1;
-
-  while (isSyncRunning && queue.length > 0) {
-    let currentSym = queue.shift();
-    syncText.textContent = `[Pass ${attempt}] Fetching from Google Finance: ${currentSym}...`;
-    let pct = Math.round((completed.size / totalUnique) * 100);
-    syncPercent.textContent = `${pct}%`;
-    fill.style.width = `${pct}%`;
-    syncDetails.textContent = `Completed: ${completed.size}/${totalUnique} stocks • Pending in queue: ${queue.length + 1}`;
-
-    let data = await fetchStockMarketData(currentSym);
-
+  async function processSymbol(sym) {
+    if (!isSyncRunning) return;
+    let data = await fetchStockMarketData(sym);
     if (data) {
-      // Inject directly into memory rows
       currentRawBatches.forEach(batch => {
         batch.forEach(row => {
-          if (getKey(row._raw, row) === currentSym) {
+          if (getKey(row._raw, row) === sym) {
             if (!row.currentprice && Number.isFinite(data.price)) row.currentprice = data.price;
             if (!row['1yrhigh'] && Number.isFinite(data.high52)) row['1yrhigh'] = data.high52;
             if (!row.dayvolume && Number.isFinite(data.dayVol)) row.dayvolume = data.dayVol;
@@ -535,29 +532,36 @@ async function startInfiniteGoogleSync() {
           }
         });
       });
-
-      completed.add(currentSym);
-      // Re-rank dynamically so user sees real-time changes
-      ranked = processAllRows(currentRawBatches);
-      render();
-    } else {
-      // If failed or rate-limited, push to back of queue so it NEVER stops until done!
-      queue.push(currentSym);
-      await new Promise(r => setTimeout(r, 800)); // Short pause before retry
+      completed++;
     }
+  }
 
-    if (queue.length === 0) break;
-    await new Promise(r => setTimeout(r, 300)); // Respect server speed
+  while (isSyncRunning && queue.length > 0) {
+    let batch = queue.splice(0, CONCURRENCY);
+    syncText.textContent = `Syncing batch: ${batch.join(', ')}...`;
+    
+    await Promise.all(batch.map(sym => processSymbol(sym)));
+
+    let pct = Math.round((completed / totalToSync) * 100);
+    syncPercent.textContent = `${pct}%`;
+    fill.style.width = `${pct}%`;
+    syncDetails.textContent = `Synced: ${completed}/${totalToSync} missing stocks • Pending: ${queue.length}`;
+
+    // Incremental UI refresh
+    ranked = processAllRows(currentRawBatches);
+    render();
+
+    await new Promise(r => setTimeout(r, 200));
   }
 
   if (isSyncRunning) {
-    syncText.textContent = "✅ 100% Stocks Successfully Completed!";
+    syncText.textContent = "✅ Missing Data Synced!";
     syncPercent.textContent = "100%";
     fill.style.width = "100%";
-    syncDetails.textContent = `All ${totalUnique} stocks updated with Google Finance data.`;
+    syncDetails.textContent = `All ${completed} target stocks updated.`;
     let snap = { id: Date.now(), date: new Date().toISOString(), files: currentRawBatches.length, results: ranked };
     await put(snap);
-    statusEl('All 100% data saved locally • ' + new Date().toLocaleTimeString());
+    statusEl('All missing stocks updated • ' + new Date().toLocaleTimeString());
   }
 
   btn.disabled = false;
@@ -633,7 +637,8 @@ document.getElementById('files').addEventListener('change', async (e) => {
   snapshotCount = (await all()).length;
   render();
   loadHistory();
-  statusEl('Loaded ' + ranked.length + ' stocks • Tap "100% Google Finance Auto-Complete"');
+  let missingCount = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  statusEl(`Loaded ${ranked.length} stocks (${missingCount} need sync) • Tap "Fast Sync"`);
 });
 
 function statusEl(msg){ document.getElementById('status').textContent = msg; }
@@ -663,6 +668,7 @@ function render(){
         <div class="tags">
           <span class="tag ${x.grade.startsWith('A')?'a':x.grade==='Watchlist'?'w':'r'}">Grade ${escapeHtml(x.grade)}</span>
           <span class="tag ${x.action==='BUY'?'a':x.action==='WAIT'?'w':'r'}">${escapeHtml(x.action)}</span>
+          ${x.missing.length ? `<span class="tag r">Missing: ${x.missing.length}</span>` : `<span class="tag a">100% Synced</span>`}
         </div>
         <div class="grid">
           <div class="metric">Entry<b>₹${x.entry}</b></div>
@@ -714,7 +720,7 @@ function openModal(symbol){
     ${x.missing.length ? `
       <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
         <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
-        <br><span style="color:#667085;">Tap "100% Google Finance Auto-Complete" to fetch missing values online.</span>
+        <br><span style="color:#667085;">Tap "Fast Sync" to fetch only these missing fields online.</span>
       </div>
     ` : `
       <div style="margin-top:12px;background:#ecfdf3;padding:8px 10px;border-radius:8px;font-size:11px;color:#027a48;">
@@ -768,7 +774,7 @@ function runDemo(){
   const demoData = [
     [
       { 'Stock name': 'TRENT', 'LTP': 7120, 'ema5': 7000, 'ema20': 6850, 'ema50': 6400, 'cci': 130, 'Sector': 'Retail', _screenerName: 'Demo_Breakout' },
-      { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'ema50': 285, 'cci': 115, 'Sector': 'Defense', _screenerName: 'Demo_Breakout' }
+      { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'Sector': 'Defense', _screenerName: 'Demo_Breakout' }
     ]
   ];
   let batches = demoData.map(batch => batch.map(r => {

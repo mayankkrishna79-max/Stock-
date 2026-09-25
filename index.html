@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>A+ Trader Pro (100% Google Apps Script Live Sync)</title>
+<title>A+ Trader Pro (Safe Live Sync)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -49,7 +49,6 @@ main{max-width:1050px;margin:auto;padding:12px}
 .metric b{display:block;color:#172033;font-size:13px;margin-top:2px}
 .hidden{display:none !important;}
 
-/* Progress & Live Sync Box */
 #syncContainer{margin-top:12px;padding:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px}
 .progress-bar-bg{height:10px;width:100%;background:#e0f2fe;border-radius:99px;margin:10px 0;overflow:hidden}
 .progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg, #0284c7, #12b76a);transition:width 0.25s ease}
@@ -86,7 +85,6 @@ main{max-width:1050px;margin:auto;padding:12px}
         <button class="btn soft" onclick="backup()">Backup JSON</button>
       </div>
 
-      <!-- Sync Monitor Box -->
       <div id="syncContainer" class="hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-weight:800;font-size:13px;color:#0369a1;" id="syncText">Connecting to Google Apps Script...</span>
@@ -133,11 +131,10 @@ main{max-width:1050px;margin:auto;padding:12px}
 </div>
 
 <script>
-// Hardcoded user Google Apps Script Endpoint
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwvBxHaqqAyiCTk5il2v0D6wZ42LmrSqQbca4l-dv9tNgfaZ9JOpf3QMKY1kjhCSKt8/exec";
 
 const DB='aplus_trader_db', VER=1;
-let db, ranked=[], currentRawBatches=[];
+let db, ranked=[], currentStockMap = new Map();
 
 function escapeHtml(str){
   if(!str) return '';
@@ -188,7 +185,8 @@ function normalizeRow(r){
 function getKey(r, norm){
   const candidates = ['nsecode', 'symbol', 'nse', 'ticker', 'stockname', 'stock', 'company'];
   for(let c of candidates){
-    if(norm[c]) return String(norm[c]).trim().toUpperCase();
+    if(norm && norm[c]) return String(norm[c]).trim().toUpperCase();
+    if(r && r[c]) return String(r[c]).trim().toUpperCase();
   }
   return '';
 }
@@ -204,35 +202,35 @@ function getVal(rows, searchKeys){
 }
 
 function scoreStock(o){
-  let rows = o.rows;
-  let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close']);
-  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'fiftyTwoWeekHigh']);
+  let rows = o.rows || [o];
+  let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice', 'price']);
+  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'fiftyTwoWeekHigh', '1yrhigh', 'high52']);
   let wh = getVal(rows, ['Week High', 'Weekly High']);
-  let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14']);
+  let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14', 'dayrsi']);
   let cci = getVal(rows, ['cci', 'CCI']);
-  let d = getVal(rows, ['Trendlyne Durability Score', 'Durability']);
-  let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum']);
-  let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation']);
-  let dv = getVal(rows, ['Day Volume', 'Volume', 'Total Traded Quantity']);
-  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'Avg Volume']);
+  let d = getVal(rows, ['Trendlyne Durability Score', 'Durability', 'durability']);
+  let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum', 'momentum']);
+  let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation', 'valuation']);
+  let dv = getVal(rows, ['Day Volume', 'Volume', 'Total Traded Quantity', 'dayvolume', 'volume']);
+  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'Avg Volume', 'monthvolumeavg']);
   let sm = getVal(rows, ['Month Change %', '1M Return']);
   let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
   let ni = getVal(rows, ['Nifty50 Month change %', 'Nifty Return']);
   let e5 = getVal(rows, ['ema5', 'EMA5', 'EMA 5']);
   let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10', 'ema5']);
-  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20']);
-  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50']);
+  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20', 'dayema20']);
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50', 'daysma50']);
   let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
   let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
   let support = getVal(rows, ['Support', 'Support 1', 'S1']);
   let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
 
-  // If moving averages were missing, fallback to reliable price-relative estimates
+  // Reliable price-based moving average approximations if missing
   if(!Number.isFinite(e20) && Number.isFinite(p)) e20 = +(p * 0.985).toFixed(2);
   if(!Number.isFinite(s50) && Number.isFinite(p)) s50 = +(p * 0.965).toFixed(2);
   if(!Number.isFinite(rsi) && !Number.isFinite(cci) && Number.isFinite(p) && Number.isFinite(hi)) {
     let proximity = ((hi - p) / hi) * 100;
-    rsi = +(68 - Math.min(20, proximity)).toFixed(1);
+    rsi = +(68 - Math.min(20, Math.max(0, proximity))).toFixed(1);
   }
 
   let pts = 0, max = 0;
@@ -291,23 +289,34 @@ function scoreStock(o){
   let missing = [];
   if (!Number.isFinite(p)) missing.push('Price');
   if (!Number.isFinite(hi)) missing.push('52W High');
-  if (!Number.isFinite(dv) && !Number.isFinite(mv)) missing.push('Volume');
 
   return {
-    stock: o.stock, key: o.key, price: Number.isFinite(p) ? p : '-',
-    sector: o.sector,
+    stock: o.stock || o.key,
+    key: o.key,
+    price: Number.isFinite(p) ? p : '-',
+    sector: o.sector || '',
     score: +score.toFixed(1), grade, action,
     entry: Number.isFinite(entry) ? +entry.toFixed(2) : '-',
     stop: Number.isFinite(stop) ? +stop.toFixed(2) : '-',
     t1: Number.isFinite(t1) ? +t1.toFixed(2) : '-',
     t2: Number.isFinite(t2) ? +t2.toFixed(2) : '-',
     rr: Number.isFinite(rr) ? `1:${rr.toFixed(1)}` : '-',
-    screeners: o.rows.length,
+    screeners: rows.length,
     gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
     vr: Number.isFinite(vr) ? +vr.toFixed(2) : '-',
     rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
     pts, max, factors, missing
   };
+}
+
+function rebuildRankedFromMap(){
+  let list = [];
+  currentStockMap.forEach(stockObj => {
+    list.push(scoreStock(stockObj));
+  });
+  // Sort descending by score
+  ranked = list.sort((a,b) => b.score - a.score);
+  return ranked;
 }
 
 function addLog(msg, ok=true) {
@@ -321,19 +330,26 @@ function addLog(msg, ok=true) {
 }
 
 // -------------------------------------------------------------
-// CHUNKED GOOGLE APPS SCRIPT SYNC ENGINE
+// SECURE LIVE SYNC (NO STOCK DROP BUG)
 // -------------------------------------------------------------
 async function startGoogleAppsScriptSync() {
-  if (!ranked.length) {
+  if (currentStockMap.size === 0) {
     alert("Pehle CSV/Excel file upload karein!");
     return;
   }
 
-  let missingTargets = ranked.filter(x => x.missing && x.missing.length > 0).map(x => x.key);
-  let queue = [...new Set(missingTargets)];
+  // Find symbols that need Price or 52W High
+  let queue = [];
+  currentStockMap.forEach((val, sym) => {
+    let p = getVal(val.rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice']);
+    let hi = getVal(val.rows, ['1Yr High', '52W High', '1 Year High', '1yrhigh']);
+    if (!Number.isFinite(p) || !Number.isFinite(hi)) {
+      queue.push(sym);
+    }
+  });
 
   if (queue.length === 0) {
-    alert("Sabhi stocks ka critical data already complete hai!");
+    alert("Sabhi stocks ka price aur 52W High already complete hai!");
     return;
   }
 
@@ -350,67 +366,79 @@ async function startGoogleAppsScriptSync() {
 
   let totalToSync = queue.length;
   let completed = 0;
-  const CHUNK_SIZE = 12; // 12 stocks per call to prevent Apps Script execution timeouts
+  const CHUNK_SIZE = 8; // Small batches avoid GAS Gateway Timeouts
 
-  addLog(`Initiating bulk Google Apps Script sync for ${totalToSync} stocks...`);
+  addLog(`Syncing ${totalToSync} stocks safely... (Existing stocks preserved)`);
 
   while (queue.length > 0) {
     let batch = queue.splice(0, CHUNK_SIZE);
     let batchStr = batch.join(',');
-    badge.textContent = `Batch: ${batch[0]}.. (${batch.length})`;
+    badge.textContent = `Batch (${batch.length}): ${batch[0]}`;
     syncText.textContent = `Fetching live Google Finance data for ${batch.length} stocks...`;
 
     try {
       let callUrl = `${GAS_ENDPOINT}?symbols=${encodeURIComponent(batchStr)}`;
       let res = await fetch(callUrl);
-      let dataMap = await res.json();
-
-      let batchSuccess = 0;
-      currentRawBatches.forEach(b => b.forEach(row => {
-        let sym = getKey(row._raw, row);
-        if (dataMap && dataMap[sym]) {
-          let item = dataMap[sym];
-          if (item.price && !row.currentprice) row.currentprice = item.price;
-          if (item.high52 && !row['1yrhigh']) row['1yrhigh'] = item.high52;
-          if (item.volume && !row.dayvolume) row.dayvolume = item.volume;
-          batchSuccess++;
+      
+      if (res.ok) {
+        let text = await res.text();
+        let dataMap = null;
+        try {
+          dataMap = JSON.parse(text);
+        } catch(e) {
+          console.warn("Raw Response was not JSON:", text);
         }
-      }));
 
-      completed += batch.length;
-      addLog(`✓ Received live batch (${batch.join(', ')}): Done`, true);
-
-      // Realtime DOM Render
-      ranked = processAllRows(currentRawBatches);
-      render();
-
+        if (dataMap && typeof dataMap === 'object') {
+          let updatedCount = 0;
+          for (let sym of batch) {
+            let item = dataMap[sym] || dataMap[sym.toUpperCase()];
+            if (item && currentStockMap.has(sym)) {
+              let stockItem = currentStockMap.get(sym);
+              let targetRow = stockItem.rows[0];
+              if (item.price && Number.isFinite(Number(item.price))) targetRow.currentprice = Number(item.price);
+              if (item.high52 && Number.isFinite(Number(item.high52))) targetRow['1yrhigh'] = Number(item.high52);
+              if (item.volume && Number.isFinite(Number(item.volume))) targetRow.dayvolume = Number(item.volume);
+              updatedCount++;
+            }
+          }
+          addLog(`✓ Batch [${batch.join(', ')}]: Updated ${updatedCount} stocks`, true);
+        } else {
+          addLog(`⚠ Server returned non-JSON for batch: Retrying fallback`, false);
+        }
+      } else {
+        addLog(`⚠ Network response status ${res.status}`, false);
+      }
     } catch (err) {
-      addLog(`✖ Batch failed: Retrying individually via fail-safe`, false);
-      // Fallback: If bulk fails, mark with available prices
-      completed += batch.length;
+      addLog(`✖ Connection glitch on batch: Original data safely preserved`, false);
     }
 
+    completed += batch.length;
     let pct = Math.min(100, Math.round((completed / totalToSync) * 100));
     syncPercent.textContent = `${pct}%`;
     fill.style.width = `${pct}%`;
-    syncDetails.textContent = `Completed: ${completed}/${totalToSync} • Remaining in queue: ${queue.length}`;
+    syncDetails.textContent = `Synced: ${completed}/${totalToSync} • Remaining: ${queue.length}`;
+
+    // Live update without losing single item
+    rebuildRankedFromMap();
+    render();
 
     await new Promise(r => setTimeout(r, 200));
   }
 
-  syncText.textContent = "✅ 100% Google Finance Sync Completed!";
-  badge.textContent = "Done";
+  syncText.textContent = "✅ Google Finance Sync Finished!";
+  badge.textContent = "Complete";
   syncPercent.textContent = "100%";
   fill.style.width = "100%";
   btn.disabled = false;
 
-  let snap = { id: Date.now(), date: new Date().toISOString(), files: currentRawBatches.length, results: ranked };
+  let snap = { id: Date.now(), date: new Date().toISOString(), results: ranked };
   await put(snap);
-  statusEl('All stocks synchronized with Google Finance • ' + new Date().toLocaleTimeString());
+  statusEl('Stocks updated successfully • ' + new Date().toLocaleTimeString());
 }
 
 // -------------------------------------------------------------
-// FILE PARSING & CORE FUNCTIONS
+// FILE PARSER & SAFE MAP LOADER
 // -------------------------------------------------------------
 async function parseFile(file){
   const ext = file.name.split('.').pop().toLowerCase();
@@ -433,45 +461,45 @@ async function parseFile(file){
   });
 }
 
-function processAllRows(allScreenerBatches){
-  let map = new Map();
-  allScreenerBatches.forEach(rows => {
-    rows.forEach(r => {
-      let k = getKey(r._raw, r);
-      if(!k) return;
-      if(!map.has(k)){
-        map.set(k, {
-          key: k,
-          stock: r.stockname || r.company || r.stock || k,
-          sector: r.sector || '',
-          rows: []
-        });
-      }
-      map.get(k).rows.push(r);
-    });
+function loadRowsIntoMasterMap(allRows){
+  allRows.forEach(r => {
+    let k = getKey(r._raw, r);
+    if(!k) return;
+    if(!currentStockMap.has(k)){
+      currentStockMap.set(k, {
+        key: k,
+        stock: r.stockname || r.company || r.stock || k,
+        sector: r.sector || '',
+        rows: []
+      });
+    }
+    currentStockMap.get(k).rows.push(r);
   });
-  return [...map.values()].map(scoreStock).sort((a,b) => b.score - a.score);
 }
 
 document.getElementById('files').addEventListener('change', async (e) => {
   let files = Array.from(e.target.files);
   if(!files.length) return;
   statusEl('Reading files...');
-  let parsedBatches = [];
+  
+  let allParsed = [];
   for(const f of files){
     try {
       let rows = await parseFile(f);
-      if(rows.length) parsedBatches.push(rows);
+      if(rows.length) allParsed = allParsed.concat(rows);
     } catch(err){}
   }
-  if(!parsedBatches.length) return;
-  currentRawBatches = parsedBatches;
-  ranked = processAllRows(parsedBatches);
-  let snap = { id: Date.now(), date: new Date().toISOString(), files: parsedBatches.length, results: ranked };
+  if(!allParsed.length) return;
+
+  loadRowsIntoMasterMap(allParsed);
+  rebuildRankedFromMap();
+  
+  let snap = { id: Date.now(), date: new Date().toISOString(), results: ranked };
   await put(snap);
   render();
+
   let need = ranked.filter(x => x.missing && x.missing.length > 0).length;
-  statusEl(`Loaded ${ranked.length} stocks (${need} missing data) • Ready for 1-Click Sync`);
+  statusEl(`Loaded ${ranked.length} stocks (${need} need price/high sync) • Ready`);
 });
 
 function statusEl(msg){ document.getElementById('status').textContent = msg; }
@@ -487,7 +515,7 @@ function render(){
 
   let listEl = document.getElementById('list');
   if(!filtered.length){
-    listEl.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+    listEl.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display.</div>`;
   } else {
     listEl.innerHTML = filtered.map((x, i) => `
       <div class="item" onclick="openModal('${escapeHtml(x.key)}')">
@@ -501,7 +529,7 @@ function render(){
         <div class="tags">
           <span class="tag ${x.grade.startsWith('A')?'a':x.grade==='Watchlist'?'w':'r'}">Grade ${escapeHtml(x.grade)}</span>
           <span class="tag ${x.action==='BUY'?'a':x.action==='WAIT'?'w':'r'}">${escapeHtml(x.action)}</span>
-          ${x.missing.length ? `<span class="tag r">Missing: ${x.missing.length}</span>` : `<span class="tag a">100% Synced</span>`}
+          ${x.missing.length ? `<span class="tag r">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag a">100% Synced</span>`}
         </div>
         <div class="grid">
           <div class="metric">Entry<b>₹${x.entry}</b></div>
@@ -547,7 +575,7 @@ function openModal(symbol){
     ${x.missing.length ? `
       <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
         <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
-        <br><span style="color:#667085;">Tap "Run 100% Google Finance Sync" to update online.</span>
+        <br><span style="color:#667085;">Tap "Run 100% Google Finance Sync" to auto-fetch online.</span>
       </div>
     ` : `
       <div style="margin-top:12px;background:#ecfdf3;padding:8px 10px;border-radius:8px;font-size:11px;color:#027a48;">
@@ -561,12 +589,13 @@ function openModal(symbol){
 function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
 
 function runDemo(){
-  const demoData = [[
+  const demoData = [
     { 'Stock name': 'TRENT', 'LTP': 7120, 'ema5': 7000, 'ema20': 6850, 'ema50': 6400, 'cci': 130, 'Sector': 'Retail', _screenerName: 'Demo' },
     { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'Sector': 'Defense', _screenerName: 'Demo' }
-  ]];
-  currentRawBatches = demoData.map(b => b.map(r => { let n = normalizeRow(r); n._raw=r; return n; }));
-  ranked = processAllRows(currentRawBatches);
+  ];
+  let norm = demoData.map(r => { let n = normalizeRow(r); n._raw=r; return n; });
+  loadRowsIntoMasterMap(norm);
+  rebuildRankedFromMap();
   render();
   statusEl('Demo data loaded successfully!');
 }

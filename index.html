@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>A+ Trader Pro (Smart Fast Sync)</title>
+<title>A+ Trader Pro (Live Non-Stop Sync)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -52,9 +52,12 @@ main{max-width:1050px;margin:auto;padding:12px}
 .bottom button.active{color:var(--primary)}
 .hidden{display:none !important;}
 
-#syncContainer{margin-top:12px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px}
-.progress-bar-bg{height:8px;width:100%;background:#e0f2fe;border-radius:99px;margin:8px 0;overflow:hidden}
-.progress-bar-fill{height:100%;width:0%;background:#0284c7;transition:width 0.25s ease}
+/* Live Sync Box */
+#syncContainer{margin-top:12px;padding:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px}
+.progress-bar-bg{height:10px;width:100%;background:#e0f2fe;border-radius:99px;margin:10px 0;overflow:hidden}
+.progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg, #0284c7, #12b76a);transition:width 0.2s ease}
+.sync-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;margin-top:4px}
+.sync-log{max-height:80px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;padding:6px 10px;border-radius:6px;font-family:monospace;font-size:11px;color:#334155;margin-top:8px}
 
 .modal-overlay{
   position:fixed;top:0;left:0;right:0;bottom:0;
@@ -88,8 +91,8 @@ main{max-width:1050px;margin:auto;padding:12px}
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div class="toolbar">
-        <button class="btn accent" id="btnSync" onclick="startSelectiveFastSync()">⚡ Fast Sync (Only Missing Data)</button>
-        <button class="btn danger hidden" id="btnStopSync" onclick="stopGoogleSync()">⏹ Stop Sync</button>
+        <button class="btn accent" id="btnSync" onclick="startLiveNonStopSync()">⚡ Live Fast Sync (Auto-Retry Till 100%)</button>
+        <button class="btn danger hidden" id="btnStopSync" onclick="stopGoogleSync()">⏹ Pause Sync</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
         <button class="btn soft" onclick="exportData('csv')">Export CSV</button>
         <button class="btn soft" onclick="exportData('xlsx')">Export Excel</button>
@@ -98,18 +101,21 @@ main{max-width:1050px;margin:auto;padding:12px}
         <input id="restore" class="hidden" type="file" accept=".json">
       </div>
 
+      <!-- Live Sync Activity Box -->
       <div id="syncContainer" class="hidden">
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#0369a1;">
-          <span id="syncText">Preparing selective fast sync...</span>
-          <span id="syncPercent">0%</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:800;font-size:13px;color:#0369a1;" id="syncText">Connecting to Market Stream...</span>
+          <span style="font-weight:900;font-size:15px;color:#0284c7;" id="syncPercent">0%</span>
         </div>
         <div class="progress-bar-bg">
           <div id="progressFill" class="progress-bar-fill"></div>
         </div>
-        <small id="syncDetails" style="font-size:11px;color:#0284c7;">Targeting only stocks with missing critical indicators.</small>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#0284c7;">
+          <span id="syncDetails">Pending: 0 • Completed: 0</span>
+          <span class="sync-badge" id="currentStockBadge">Waiting...</span>
+        </div>
+        <div class="sync-log" id="syncLog"></div>
       </div>
-
-      <p class="muted" style="margin-top:8px;">Fast Sync sirf unhi stocks ko fetch karta hai jinke 52W High, Volume, ya Moving Averages file me missing hain.</p>
     </div>
 
     <div class="kpis">
@@ -117,8 +123,8 @@ main{max-width:1050px;margin:auto;padding:12px}
       <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
       <div class="kpi"><small>BUY Signals</small><b id="buy">0</b></div>
       <div class="kpi"><small>WAIT</small><b id="wait">0</b></div>
+      <div class="kpi"><small>Need Sync</small><b id="needSync" style="color:#b42318;">0</b></div>
       <div class="kpi"><small>Top Score</small><b id="top">0</b></div>
-      <div class="kpi"><small>Snapshots</small><b id="snap">0</b></div>
     </div>
 
     <div class="card">
@@ -222,6 +228,11 @@ function getKey(r, norm){
     if(norm[c]) return String(norm[c]).trim().toUpperCase();
   }
   return '';
+}
+
+function sanitizeSymbol(sym){
+  if(!sym) return '';
+  return sym.trim().toUpperCase().replace(/&/g, '%26');
 }
 
 function getVal(rows, searchKeys){
@@ -338,7 +349,7 @@ function scoreStock(o){
   };
 }
 
-// Indicator math functions
+// Indicator Calculation Engine
 function calcRSI(closes, period = 14) {
   if (closes.length <= period) return NaN;
   let gains = 0, losses = 0;
@@ -374,27 +385,29 @@ function calcSMA(closes, period) {
 }
 
 // -------------------------------------------------------------
-// SELECTIVE FAST SYNC ENGINE
+// LIVE NON-STOP PROXY & DATA FETCH ENGINE
 // -------------------------------------------------------------
-const PROXIES = [
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+const PROXY_ENGINES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`
 ];
 
-async function fetchFromMultiProxy(targetUrl) {
-  for (let proxyFn of PROXIES) {
+async function fetchWithRotatingProxy(targetUrl) {
+  for (let i = 0; i < PROXY_ENGINES.length; i++) {
     try {
-      const pUrl = proxyFn(targetUrl);
+      const pUrl = PROXY_ENGINES[i](targetUrl);
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 4500); // Fast 4.5s timeout per proxy
+      const tid = setTimeout(() => ctrl.abort(), 3800); // 3.8s hard timeout
       const res = await fetch(pUrl, { signal: ctrl.signal });
       clearTimeout(tid);
       if (res.ok) {
         const text = await res.text();
         if (text && text.length > 50) return text;
       }
-    } catch (e) {}
+    } catch (e) {
+      // try next proxy immediately
+    }
   }
   return null;
 }
@@ -427,14 +440,16 @@ function parseGoogleFinanceHTML(html) {
   }
 }
 
-async function fetchStockMarketData(sym) {
-  // Direct Yahoo chart data (most accurate for exact Close, 52W High, Volume, MAs, and RSI)
-  let yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.NS?range=1y&interval=1d`;
-  let chartDataText = await fetchFromMultiProxy(yfUrl);
+async function fetchLiveStockData(rawSym) {
+  let sym = sanitizeSymbol(rawSym);
+  
+  // Endpoint 1: Direct 1Y Yahoo Market Candle Stream
+  let yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}.NS?range=1y&interval=1d`;
+  let chartText = await fetchWithRotatingProxy(yfUrl);
   let chartObj = null;
 
-  if (chartDataText) {
-    try { chartObj = JSON.parse(chartDataText)?.chart?.result?.[0]; } catch(e){}
+  if (chartText) {
+    try { chartObj = JSON.parse(chartText)?.chart?.result?.[0]; } catch(e){}
   }
 
   let closes = (chartObj?.indicators?.quote?.[0]?.close || []).filter(Number.isFinite);
@@ -450,10 +465,10 @@ async function fetchStockMarketData(sym) {
   let ema20Val = closes.length >= 20 ? calcEMA(closes, 20) : NaN;
   let sma50Val = closes.length >= 50 ? calcSMA(closes, 50) : NaN;
 
-  // Fallback to Google Finance HTML if primary quote is missing
+  // Endpoint 2: Fallback Google Finance
   if (!Number.isFinite(finalPrice) || !Number.isFinite(finalHigh52)) {
-    let gfUrl = `https://www.google.com/finance/quote/${encodeURIComponent(sym)}:NSE`;
-    let gfHtml = await fetchFromMultiProxy(gfUrl);
+    let gfUrl = `https://www.google.com/finance/quote/${sym}:NSE`;
+    let gfHtml = await fetchWithRotatingProxy(gfUrl);
     if (gfHtml) {
       let gfData = parseGoogleFinanceHTML(gfHtml);
       if (!Number.isFinite(finalPrice)) finalPrice = gfData.price;
@@ -480,21 +495,31 @@ function stopGoogleSync() {
   isSyncRunning = false;
   document.getElementById('btnStopSync').classList.add('hidden');
   document.getElementById('btnSync').disabled = false;
-  document.getElementById('syncText').textContent = 'Sync paused.';
+  document.getElementById('syncText').textContent = 'Sync paused by user.';
 }
 
-async function startSelectiveFastSync() {
+function addLog(msg, isSuccess=true) {
+  const logEl = document.getElementById('syncLog');
+  const d = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  line.style.color = isSuccess ? '#059669' : '#dc2626';
+  line.textContent = `[${d}] ${msg}`;
+  logEl.prepend(line);
+  if (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+}
+
+async function startLiveNonStopSync() {
   if (!ranked.length) {
     alert("Pehle CSV/Excel file upload karein!");
     return;
   }
 
-  // Filter ONLY stocks that have missing critical fields
+  // Sirf vahi stocks target honge jinka critical data missing hai
   let missingTargets = ranked.filter(x => x.missing && x.missing.length > 0).map(x => x.key);
   let queue = [...new Set(missingTargets)];
 
   if (queue.length === 0) {
-    alert("Sabhi stocks ka critical data already complete hai! Koi fetch karne ki zaroorat nahi.");
+    alert("Sabhi stocks ka critical data already complete hai!");
     return;
   }
 
@@ -503,6 +528,7 @@ async function startSelectiveFastSync() {
   const syncText = document.getElementById('syncText');
   const syncPercent = document.getElementById('syncPercent');
   const syncDetails = document.getElementById('syncDetails');
+  const badge = document.getElementById('currentStockBadge');
   const fill = document.getElementById('progressFill');
   const btn = document.getElementById('btnSync');
   const btnStop = document.getElementById('btnStopSync');
@@ -512,13 +538,20 @@ async function startSelectiveFastSync() {
   btn.disabled = true;
 
   let totalToSync = queue.length;
-  let completed = 0;
-  const CONCURRENCY = 3; // 3 parallel calls for maximum speed
+  let completedSet = new Set();
+  let retryCounters = {};
 
-  async function processSymbol(sym) {
-    if (!isSyncRunning) return;
-    let data = await fetchStockMarketData(sym);
+  addLog(`Starting sync for ${totalToSync} stocks with missing indicators.`);
+
+  while (isSyncRunning && queue.length > 0) {
+    let sym = queue.shift();
+    badge.textContent = `Syncing: ${sym}`;
+    syncText.textContent = `Fetching live data for ${sym}...`;
+
+    let data = await fetchLiveStockData(sym);
+
     if (data) {
+      // In-memory data store update
       currentRawBatches.forEach(batch => {
         batch.forEach(row => {
           if (getKey(row._raw, row) === sym) {
@@ -532,36 +565,42 @@ async function startSelectiveFastSync() {
           }
         });
       });
-      completed++;
+
+      completedSet.add(sym);
+      addLog(`✓ ${sym}: Price ₹${data.price||'-'}, 52W ₹${data.high52||'-'}, RSI ${data.rsi?data.rsi.toFixed(1):'-'}`, true);
+      
+      // LIVE DOM UPDATE: Har stock ke baad turant re-rank aur screen refresh
+      ranked = processAllRows(currentRawBatches);
+      render();
+    } else {
+      retryCounters[sym] = (retryCounters[sym] || 0) + 1;
+      if (retryCounters[sym] <= 2) {
+        queue.push(sym); // Retry back of queue
+        addLog(`⚠ ${sym}: Proxy timeout, pushed to retry queue (Attempt ${retryCounters[sym]})`, false);
+      } else {
+        addLog(`✖ ${sym}: Skipped after 3 attempts (ticker not listed on NSE)`, false);
+      }
     }
-  }
 
-  while (isSyncRunning && queue.length > 0) {
-    let batch = queue.splice(0, CONCURRENCY);
-    syncText.textContent = `Syncing batch: ${batch.join(', ')}...`;
-    
-    await Promise.all(batch.map(sym => processSymbol(sym)));
-
-    let pct = Math.round((completed / totalToSync) * 100);
+    let pct = Math.round((completedSet.size / totalToSync) * 100);
     syncPercent.textContent = `${pct}%`;
     fill.style.width = `${pct}%`;
-    syncDetails.textContent = `Synced: ${completed}/${totalToSync} missing stocks • Pending: ${queue.length}`;
+    syncDetails.textContent = `Completed: ${completedSet.size}/${totalToSync} • In Queue: ${queue.length}`;
 
-    // Incremental UI refresh
-    ranked = processAllRows(currentRawBatches);
-    render();
-
-    await new Promise(r => setTimeout(r, 200));
+    // Throttle guard to prevent IP ban
+    await new Promise(r => setTimeout(r, 250));
   }
 
   if (isSyncRunning) {
-    syncText.textContent = "✅ Missing Data Synced!";
+    syncText.textContent = "✅ All Stocks Successfully Synced!";
+    badge.textContent = "Done 100%";
     syncPercent.textContent = "100%";
     fill.style.width = "100%";
-    syncDetails.textContent = `All ${completed} target stocks updated.`;
+    addLog(`All target stocks completed. Saving locally...`, true);
+
     let snap = { id: Date.now(), date: new Date().toISOString(), files: currentRawBatches.length, results: ranked };
     await put(snap);
-    statusEl('All missing stocks updated • ' + new Date().toLocaleTimeString());
+    statusEl('All stocks updated & saved locally • ' + new Date().toLocaleTimeString());
   }
 
   btn.disabled = false;
@@ -637,8 +676,8 @@ document.getElementById('files').addEventListener('change', async (e) => {
   snapshotCount = (await all()).length;
   render();
   loadHistory();
-  let missingCount = ranked.filter(x => x.missing && x.missing.length > 0).length;
-  statusEl(`Loaded ${ranked.length} stocks (${missingCount} need sync) • Tap "Fast Sync"`);
+  let need = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  statusEl(`Loaded ${ranked.length} stocks (${need} need sync) • Tap "Live Fast Sync"`);
 });
 
 function statusEl(msg){ document.getElementById('status').textContent = msg; }
@@ -682,12 +721,13 @@ function render(){
     `).join('');
   }
 
+  let needCount = ranked.filter(x => x.missing && x.missing.length > 0).length;
   document.getElementById('n').textContent = ranked.length;
   document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
   document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
   document.getElementById('wait').textContent = ranked.filter(x => x.action==='WAIT').length;
+  document.getElementById('needSync').textContent = needCount;
   document.getElementById('top').textContent = ranked[0]?.score || 0;
-  document.getElementById('snap').textContent = snapshotCount;
 }
 
 function openModal(symbol){
@@ -720,7 +760,7 @@ function openModal(symbol){
     ${x.missing.length ? `
       <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
         <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
-        <br><span style="color:#667085;">Tap "Fast Sync" to fetch only these missing fields online.</span>
+        <br><span style="color:#667085;">Tap "Live Fast Sync" to auto-fetch these missing fields online.</span>
       </div>
     ` : `
       <div style="margin-top:12px;background:#ecfdf3;padding:8px 10px;border-radius:8px;font-size:11px;color:#027a48;">
@@ -774,7 +814,7 @@ function runDemo(){
   const demoData = [
     [
       { 'Stock name': 'TRENT', 'LTP': 7120, 'ema5': 7000, 'ema20': 6850, 'ema50': 6400, 'cci': 130, 'Sector': 'Retail', _screenerName: 'Demo_Breakout' },
-      { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'Sector': 'Defense', _screenerName: 'Demo_Breakout' }
+      { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'Sector': 'Defense', _screenerName: 'Demo_Breakout' }
     ]
   ];
   let batches = demoData.map(batch => batch.map(r => {

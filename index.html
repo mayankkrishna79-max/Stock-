@@ -14,19 +14,22 @@
   color:var(--text);background:var(--bg)
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{padding-bottom:80px}
-header{background:#070d19;color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+body{padding-bottom:90px}
+header{background:#070d19;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 header h1{font-size:18px;font-weight:800}
 header small{color:var(--muted);font-size:11px}
 main{max-width:1100px;margin:auto;padding:12px}
 .card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.btn{border:0;border-radius:8px;padding:9px 15px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .primary{background:var(--primary);color:#fff}.soft{background:#334155;color:#f8fafc}
 .success{background:var(--success);color:#052e16}.danger{background:#450a0a;color:#f87171}
 .accent{background:#0284c7;color:#fff}
-.drop-zone{display:block;border:2px dashed #475569;border-radius:12px;padding:24px;text-align:center;color:var(--muted);background:#131d31;cursor:pointer}
-.drop-zone:hover{border-color:var(--accent);background:#182234}
+
+/* Mobile Native Direct File Uploader */
+.upload-container{border:2px dashed #475569;border-radius:12px;padding:18px;text-align:center;background:#131d31}
+.file-picker{width:100%;max-width:320px;margin:8px auto 0;padding:8px;background:#0b1120;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:12px}
+
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:10px;background:#131d31}
 .kpi small{color:var(--muted);font-size:11px;font-weight:600}
@@ -47,13 +50,13 @@ main{max-width:1100px;margin:auto;padding:12px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
 .metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#070d19;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:30}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#070d19;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:12px;z-index:30}
 .bottom-nav button{background:none;border:0;font-weight:700;color:#94a3b8;font-size:12px;cursor:pointer}
 .bottom-nav button.active{color:var(--accent)}
 .hidden{display:none !important;}
 
-/* Simple Native Light Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
 .modal{background:#1e293b;border:1px solid var(--border);max-width:500px;width:100%;border-radius:14px;padding:18px;color:#fff}
 .input-group{margin-bottom:10px}
 .input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
@@ -67,7 +70,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">System Ready</small>
+    <small id="status">Direct Engine Ready</small>
   </div>
   <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Signals</button>
 </header>
@@ -76,11 +79,11 @@ main{max-width:1100px;margin:auto;padding:12px}
   <!-- TAB 1: Screener -->
   <section id="tab-screener">
     <div class="card">
-      <label class="drop-zone" for="files">
-        <b>📁 Screener File Upload (.CSV / .XLSX)</b><br>
-        <span style="font-size:11px;color:var(--muted);">Tap karke direct file select karein</span>
-        <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="position:absolute;left:-9999px" onchange="handleFileSelect(event)">
-      </label>
+      <div class="upload-container">
+        <b>📁 Upload Screener File (.CSV / .XLSX)</b><br>
+        <span style="font-size:11px;color:var(--muted);">Neeche button se file select karein:</span><br>
+        <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-picker" onchange="handleFileSelect(event)">
+      </div>
       <div class="toolbar">
         <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
@@ -94,7 +97,7 @@ main{max-width:1100px;margin:auto;padding:12px}
       <div class="kpi"><small>BUY Signals</small><b id="buy" style="color:#4ade80;">0</b></div>
       <div class="kpi"><small>Missing Critical</small><b id="missingCount" style="color:#f87171;">0</b></div>
       <div class="kpi"><small>Holdings</small><b id="holdCount" style="color:var(--accent);">0</b></div>
-      <div class="kpi"><small>Telegram Status</small><b id="tgStatus" style="font-size:12px;color:#94a3b8;">Not Configured</b></div>
+      <div class="kpi"><small>Telegram Status</small><b id="tgStatus" style="font-size:11px;color:#94a3b8;">Configured</b></div>
     </div>
 
     <div class="card">
@@ -118,7 +121,7 @@ main{max-width:1100px;margin:auto;padding:12px}
       <div class="row">
         <div>
           <h3>💼 Open Positions (Auto-Sell Watcher)</h3>
-          <small class="muted">Live SL & Target Monitoring</small>
+          <small class="muted">Live SL & Target Alerts</small>
         </div>
         <button class="btn primary" onclick="openManualAddModal()">+ Add Position</button>
       </div>
@@ -152,7 +155,6 @@ main{max-width:1100px;margin:auto;padding:12px}
   <button id="nav-settings" onclick="switchTab('settings')">⚙️ Settings</button>
 </nav>
 
-<!-- Modals rendered dynamically to prevent freezing -->
 <div id="modalContainer"></div>
 
 <script>
@@ -295,9 +297,7 @@ function rebuildRankedFromMap(){
   return ranked;
 }
 
-// -------------------------------------------------------------
-// SECURE FILE PARSER (ZERO FREEZE)
-// -------------------------------------------------------------
+// Direct File Handler (Fixes Android File Picker Freeze)
 function handleFileSelect(e){
   let files = e.target.files;
   if(!files || !files.length) return;
@@ -389,9 +389,6 @@ function renderScreener(){
   document.getElementById('top').textContent = ranked[0]?.score || 0;
 }
 
-// -------------------------------------------------------------
-// DYNAMIC MODALS (NO SCREEN FREEZING OVERLAYS)
-// -------------------------------------------------------------
 function openModal(symbol){
   let x = ranked.find(item => item.key === symbol);
   if(!x) return;
@@ -542,9 +539,6 @@ function renderHoldings(){
   }).join('');
 }
 
-// -------------------------------------------------------------
-// LIVE SYNC & TELEGRAM ENGINE
-// -------------------------------------------------------------
 async function startSafeSync(){
   let queue = [...new Set([...currentStockMap.keys(), ...holdings.map(h => h.sym)])];
   if(!queue.length){ alert("Pehle file upload karein ya demo load karein!"); return; }
@@ -679,7 +673,7 @@ function clearData(){
   document.getElementById('status').textContent = "Data cleared!";
 }
 
-// Init Setup
+// Initializer
 try {
   let saved = localStorage.getItem('aplus_holdings_v3');
   if(saved) holdings = JSON.parse(saved);

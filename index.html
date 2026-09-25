@@ -3,31 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1120">
 <title>A+ Trader Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --primary:#2563eb; --bg:#0b1120; --card-bg:#1e293b; --text:#f8fafc;
   --muted:#94a3b8; --border:#334155; --accent:#38bdf8; --success:#22c55e;
+  --danger:#ef4444; --warning:#eab308;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   color:var(--text);background:var(--bg)
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{padding-bottom:80px}
-header{background:#070d19;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+header{background:#070d19;color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 header h1{font-size:18px;font-weight:800}
 header small{color:var(--muted);font-size:11px}
-main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
-.card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+main{max-width:1100px;margin:auto;padding:12px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{border:0;border-radius:8px;padding:9px 15px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .primary{background:var(--primary);color:#fff}.soft{background:#334155;color:#f8fafc}
 .success{background:var(--success);color:#052e16}.danger{background:#450a0a;color:#f87171}
 .accent{background:#0284c7;color:#fff}
-.drop{border:2px dashed #475569;border-radius:12px;padding:24px;text-align:center;color:var(--muted);background:#131d31;cursor:pointer}
+.drop-zone{display:block;border:2px dashed #475569;border-radius:12px;padding:24px;text-align:center;color:var(--muted);background:#131d31;cursor:pointer}
+.drop-zone:hover{border-color:var(--accent);background:#182234}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.kpi{border:1px solid var(--border);border-radius:12px;padding:10px;background:#131d31}
+.kpi{border:1px solid var(--border);border-radius:10px;padding:10px;background:#131d31}
 .kpi small{color:var(--muted);font-size:11px;font-weight:600}
 .kpi b{display:block;font-size:18px;color:#fff;margin-top:2px}
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -49,26 +50,14 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#070d19;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:30}
 .bottom-nav button{background:none;border:0;font-weight:700;color:#94a3b8;font-size:12px;cursor:pointer}
 .bottom-nav button.active{color:var(--accent)}
+.hidden{display:none !important;}
 
-/* Zero Freeze Guarantee: Invisible overlays completely disabled from receiving clicks */
-.hidden{
-  display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
-  z-index:-999 !important;
-}
-
-.modal-overlay{
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  background:rgba(0,0,0,0.75);
-  display:flex;align-items:center;justify-content:center;
-  z-index:9999;padding:14px;
-}
-.modal{background:#1e293b;border:1px solid var(--border);max-width:540px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px;color:#fff}
+/* Simple Native Light Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
+.modal{background:#1e293b;border:1px solid var(--border);max-width:500px;width:100%;border-radius:14px;padding:18px;color:#fff}
 .input-group{margin-bottom:10px}
 .input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
 .input-group input{width:100%;padding:8px 10px;background:#0b1120;border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px}
-.factor-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #334155;font-size:12px}
 
 @media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
@@ -78,20 +67,20 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Ready • System Active</small>
+    <small id="status">System Ready</small>
   </div>
-  <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Triggers</button>
+  <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Signals</button>
 </header>
 
 <main>
   <!-- TAB 1: Screener -->
   <section id="tab-screener">
     <div class="card">
-      <div class="drop" onclick="triggerFileInput()">
-        <b>📁 Screener Files Upload (.CSV / .XLSX / .XLS)</b><br>
-        <span style="font-size:11px;color:var(--muted);">Tap karke file select karein</span>
-        <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(event)">
-      </div>
+      <label class="drop-zone" for="files">
+        <b>📁 Screener File Upload (.CSV / .XLSX)</b><br>
+        <span style="font-size:11px;color:var(--muted);">Tap karke direct file select karein</span>
+        <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="position:absolute;left:-9999px" onchange="handleFileSelect(event)">
+      </label>
       <div class="toolbar">
         <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
@@ -104,13 +93,13 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
       <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
       <div class="kpi"><small>BUY Signals</small><b id="buy" style="color:#4ade80;">0</b></div>
       <div class="kpi"><small>Missing Critical</small><b id="missingCount" style="color:#f87171;">0</b></div>
-      <div class="kpi"><small>My Holdings</small><b id="holdCount" style="color:var(--accent);">0</b></div>
-      <div class="kpi"><small>Telegram</small><b id="tgStatus" style="font-size:11px;color:#94a3b8;">Checking...</b></div>
+      <div class="kpi"><small>Holdings</small><b id="holdCount" style="color:var(--accent);">0</b></div>
+      <div class="kpi"><small>Telegram Status</small><b id="tgStatus" style="font-size:12px;color:#94a3b8;">Not Configured</b></div>
     </div>
 
     <div class="card">
       <div class="filters">
-        <input id="search" placeholder="Search Symbol..." oninput="renderScreener()">
+        <input id="search" placeholder="Search by Stock or Symbol..." oninput="renderScreener()">
         <select id="act" onchange="renderScreener()">
           <option value="All">All Actions</option>
           <option value="BUY">BUY Only</option>
@@ -128,8 +117,8 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
     <div class="card">
       <div class="row">
         <div>
-          <h3>💼 My Open Positions (Tracking Sell Signals)</h3>
-          <small class="muted">Live SL, T1, T2 alerts</small>
+          <h3>💼 Open Positions (Auto-Sell Watcher)</h3>
+          <small class="muted">Live SL & Target Monitoring</small>
         </div>
         <button class="btn primary" onclick="openManualAddModal()">+ Add Position</button>
       </div>
@@ -143,11 +132,11 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
       <h3 style="margin-bottom:12px;">⚙️ Telegram Alert Configuration</h3>
       <div class="input-group">
         <label>Telegram Bot Token:</label>
-        <input id="tgToken" placeholder="e.g. 8860975619:AAHk...">
+        <input id="tgToken" placeholder="8860975619:AAHk...">
       </div>
       <div class="input-group">
         <label>Your Numeric Chat ID (Digits only):</label>
-        <input id="tgChatId" placeholder="e.g. 1234567890">
+        <input id="tgChatId" placeholder="1234567890">
       </div>
       <div class="toolbar">
         <button class="btn success" onclick="saveTelegramSettings()">💾 Save Credentials</button>
@@ -159,40 +148,20 @@ main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
 
 <nav class="bottom-nav">
   <button id="nav-screener" class="active" onclick="switchTab('screener')">📊 Screener</button>
-  <button id="nav-holdings" onclick="switchTab('holdings')">💼 My Holdings (<span id="badgeHold">0</span>)</button>
+  <button id="nav-holdings" onclick="switchTab('holdings')">💼 Holdings (<span id="badgeHold">0</span>)</button>
   <button id="nav-settings" onclick="switchTab('settings')">⚙️ Settings</button>
 </nav>
 
-<div id="stockModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('stockModal')">
-  <div class="modal" id="stockModalContent"></div>
-</div>
-
-<div id="holdingModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('holdingModal')">
-  <div class="modal">
-    <div class="row" style="margin-bottom:12px;">
-      <h3 id="modalTitle">Add Stock</h3>
-      <button class="btn soft" onclick="closeModal('holdingModal')">✕</button>
-    </div>
-    <div class="input-group"><label>Symbol:</label><input id="holdSym"></div>
-    <div class="input-group"><label>Buy Price (₹):</label><input type="number" step="0.05" id="holdBuyPrice"></div>
-    <div class="input-group"><label>Quantity:</label><input type="number" id="holdQty" value="10"></div>
-    <div class="input-group"><label>Stop Loss (₹):</label><input type="number" step="0.05" id="holdSL"></div>
-    <div class="input-group"><label>Target 1 (₹):</label><input type="number" step="0.05" id="holdT1"></div>
-    <div class="input-group"><label>Target 2 (₹):</label><input type="number" step="0.05" id="holdT2"></div>
-    <button class="btn success" style="width:100%;margin-top:10px;" onclick="saveHolding()">Save Holding</button>
-  </div>
-</div>
+<!-- Modals rendered dynamically to prevent freezing -->
+<div id="modalContainer"></div>
 
 <script>
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyOsZ9j-RnFWhjFXQ-b8qwUL6Xo-Xnl9ETJxpZVkpLnQYTSt2zbZ8lgFrlH014FoRc2xg/exec";
 
-let ranked = [], currentStockMap = new Map(), holdings = [];
+let currentStockMap = new Map();
+let ranked = [];
+let holdings = [];
 let triggeredAlertsToday = new Set();
-
-function triggerFileInput(){
-  const f = document.getElementById('files');
-  if(f) f.click();
-}
 
 function cleanKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 function normalizeRow(r){
@@ -326,37 +295,44 @@ function rebuildRankedFromMap(){
   return ranked;
 }
 
-async function handleFileSelect(e){
-  let files = Array.from(e.target.files);
+// -------------------------------------------------------------
+// SECURE FILE PARSER (ZERO FREEZE)
+// -------------------------------------------------------------
+function handleFileSelect(e){
+  let files = e.target.files;
   if(!files || !files.length) return;
 
-  document.getElementById('status').textContent = "Reading " + files.length + " file(s)...";
+  document.getElementById('status').textContent = `Reading ${files.length} file(s)...`;
 
-  for(let f of files){
-    try {
-      let buffer = await f.arrayBuffer();
-      let workbook = XLSX.read(buffer, { type: 'array' });
-      let sheetName = workbook.SheetNames[0];
-      let json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+  Array.from(files).forEach(file => {
+    let reader = new FileReader();
+    reader.onload = function(evt){
+      try {
+        let data = new Uint8Array(evt.target.result);
+        let workbook = XLSX.read(data, { type: 'array' });
+        let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        let json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
 
-      json.forEach(row => {
-        let norm = normalizeRow(row);
-        norm._raw = row;
-        let k = getKey(row, norm);
-        if(!k) return;
-        if(!currentStockMap.has(k)) {
-          currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
-        }
-        currentStockMap.get(k).rows.push(norm);
-      });
-    } catch(err){
-      console.error("File error:", err);
-    }
-  }
+        json.forEach(row => {
+          let norm = normalizeRow(row);
+          norm._raw = row;
+          let k = getKey(row, norm);
+          if(!k) return;
+          if(!currentStockMap.has(k)) {
+            currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
+          }
+          currentStockMap.get(k).rows.push(norm);
+        });
 
-  rebuildRankedFromMap();
-  renderScreener();
-  document.getElementById('status').textContent = "Loaded " + ranked.length + " stocks!";
+        rebuildRankedFromMap();
+        renderScreener();
+        document.getElementById('status').textContent = `Loaded ${ranked.length} stocks successfully!`;
+      } catch(err) {
+        console.error("Parse error:", err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 function renderScreener(){
@@ -370,7 +346,7 @@ function renderScreener(){
 
   let el = document.getElementById('screenerList');
   if(!filtered.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display. Upload a CSV file above.</div>`;
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display. Upload a file above.</div>`;
   } else {
     el.innerHTML = filtered.map((x, i) => `
       <div class="item">
@@ -381,7 +357,7 @@ function renderScreener(){
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <div class="score">${x.score}</div>
-            <button class="btn success" onclick="event.stopPropagation();addStockToHoldingsFromCard('${x.key}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
+            <button class="btn success" onclick="addStockToHoldings('${x.key}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
               + Holdings
             </button>
           </div>
@@ -413,44 +389,167 @@ function renderScreener(){
   document.getElementById('top').textContent = ranked[0]?.score || 0;
 }
 
+// -------------------------------------------------------------
+// DYNAMIC MODALS (NO SCREEN FREEZING OVERLAYS)
+// -------------------------------------------------------------
 function openModal(symbol){
   let x = ranked.find(item => item.key === symbol);
   if(!x) return;
-  let modalContent = document.getElementById('stockModalContent');
-  modalContent.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h2 style="font-size:18px;">${x.stock} (${x.key})</h2>
-      <button class="btn soft" onclick="closeModal('stockModal')">✕</button>
+  
+  let container = document.getElementById('modalContainer');
+  container.innerHTML = `
+    <div class="modal-overlay" onclick="closeDynamicModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2 style="font-size:18px;">${x.stock} (${x.key})</h2>
+          <button class="btn soft" onclick="closeDynamicModal()">✕</button>
+        </div>
+        <div style="font-size:13px;margin-bottom:14px;">
+          <b>Score:</b> ${x.score}/100 (${x.pts} of ${x.max} points)
+        </div>
+        <h4 style="font-size:12px;margin-bottom:6px;color:var(--muted);">Parameters Audit:</h4>
+        ${x.factors.map(f => `
+          <div class="factor-row" style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #334155;font-size:12px;">
+            <span>${f.passed ? '✅' : '❌'} ${f.label} <small style="color:var(--muted)">(${f.desc})</small></span>
+            <b>${f.passed ? '+' + f.weight : '0'} pts</b>
+          </div>
+        `).join('')}
+        ${x.missing.length ? `
+          <div style="margin-top:12px;background:#450a0a;padding:8px 10px;border-radius:8px;font-size:11px;color:#f87171;">
+            <b>Missing Critical:</b> ${x.missing.join(', ')}
+          </div>
+        ` : `
+          <div style="margin-top:12px;background:#052e16;padding:8px 10px;border-radius:8px;font-size:11px;color:#4ade80;">
+            <b>✅ All critical indicators 100% Synced!</b>
+          </div>
+        `}
+      </div>
     </div>
-    <div style="font-size:13px;margin-bottom:14px;">
-      <b>Score:</b> ${x.score}/100 (${x.pts} of ${x.max} points)
-    </div>
-    <h4 style="font-size:12px;margin-bottom:6px;color:var(--muted);">Parameters Audit:</h4>
-    ${x.factors.map(f => `
-      <div class="factor-row">
-        <span>${f.passed ? '✅' : '❌'} ${f.label} <small style="color:var(--muted)">(${f.desc})</small></span>
-        <b>${f.passed ? '+' + f.weight : '0'} pts</b>
-      </div>
-    `).join('')}
-
-    ${x.missing.length ? `
-      <div style="margin-top:12px;background:#450a0a;padding:8px 10px;border-radius:8px;font-size:11px;color:#f87171;">
-        <b>Missing Critical:</b> ${x.missing.join(', ')}
-      </div>
-    ` : `
-      <div style="margin-top:12px;background:#052e16;padding:8px 10px;border-radius:8px;font-size:11px;color:#4ade80;">
-        <b>✅ All critical indicators 100% Synced!</b>
-      </div>
-    `}
   `;
-  document.getElementById('stockModal').classList.remove('hidden');
 }
 
+function openManualAddModal(){
+  let container = document.getElementById('modalContainer');
+  container.innerHTML = `
+    <div class="modal-overlay" onclick="closeDynamicModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="row" style="margin-bottom:12px;">
+          <h3>Add Position</h3>
+          <button class="btn soft" onclick="closeDynamicModal()">✕</button>
+        </div>
+        <div class="input-group"><label>Symbol:</label><input id="holdSym"></div>
+        <div class="input-group"><label>Buy Price (₹):</label><input type="number" step="0.05" id="holdBuyPrice"></div>
+        <div class="input-group"><label>Quantity:</label><input type="number" id="holdQty" value="10"></div>
+        <div class="input-group"><label>Stop Loss (₹):</label><input type="number" step="0.05" id="holdSL"></div>
+        <div class="input-group"><label>Target 1 (₹):</label><input type="number" step="0.05" id="holdT1"></div>
+        <div class="input-group"><label>Target 2 (₹):</label><input type="number" step="0.05" id="holdT2"></div>
+        <button class="btn success" style="width:100%;margin-top:10px;" onclick="saveDynamicHolding()">Save Holding</button>
+      </div>
+    </div>
+  `;
+}
+
+function addStockToHoldings(sym, buyPrice, sl, t1, t2){
+  let container = document.getElementById('modalContainer');
+  container.innerHTML = `
+    <div class="modal-overlay" onclick="closeDynamicModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="row" style="margin-bottom:12px;">
+          <h3>Add ${sym} to Holdings</h3>
+          <button class="btn soft" onclick="closeDynamicModal()">✕</button>
+        </div>
+        <div class="input-group"><label>Symbol:</label><input id="holdSym" value="${sym}"></div>
+        <div class="input-group"><label>Buy Price (₹):</label><input type="number" step="0.05" id="holdBuyPrice" value="${buyPrice||''}"></div>
+        <div class="input-group"><label>Quantity:</label><input type="number" id="holdQty" value="10"></div>
+        <div class="input-group"><label>Stop Loss (₹):</label><input type="number" step="0.05" id="holdSL" value="${sl||''}"></div>
+        <div class="input-group"><label>Target 1 (₹):</label><input type="number" step="0.05" id="holdT1" value="${t1||''}"></div>
+        <div class="input-group"><label>Target 2 (₹):</label><input type="number" step="0.05" id="holdT2" value="${t2||''}"></div>
+        <button class="btn success" style="width:100%;margin-top:10px;" onclick="saveDynamicHolding()">Save to Tracked Portfolio</button>
+      </div>
+    </div>
+  `;
+}
+
+function closeDynamicModal(){
+  document.getElementById('modalContainer').innerHTML = '';
+}
+
+function saveDynamicHolding(){
+  let sym = document.getElementById('holdSym').value.trim().toUpperCase();
+  let buyPrice = parseFloat(document.getElementById('holdBuyPrice').value);
+  let qty = parseInt(document.getElementById('holdQty').value) || 1;
+  let sl = parseFloat(document.getElementById('holdSL').value);
+  let t1 = parseFloat(document.getElementById('holdT1').value);
+  let t2 = parseFloat(document.getElementById('holdT2').value);
+
+  if(!sym || !buyPrice || !sl){ alert("Symbol, Buy Price and Stop Loss required."); return; }
+
+  let item = { sym, buyPrice, qty, sl, t1, t2, ltp: buyPrice, date: new Date().toLocaleDateString() };
+  holdings = holdings.filter(h => h.sym !== sym);
+  holdings.push(item);
+  localStorage.setItem('aplus_holdings_v3', JSON.stringify(holdings));
+  closeDynamicModal();
+  renderHoldings();
+  document.getElementById('badgeHold').textContent = holdings.length;
+  document.getElementById('holdCount').textContent = holdings.length;
+}
+
+function removeHolding(sym){
+  holdings = holdings.filter(h => h.sym !== sym);
+  localStorage.setItem('aplus_holdings_v3', JSON.stringify(holdings));
+  renderHoldings();
+  document.getElementById('badgeHold').textContent = holdings.length;
+  document.getElementById('holdCount').textContent = holdings.length;
+}
+
+function renderHoldings(){
+  let el = document.getElementById('holdingsList');
+  if(!holdings.length){
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No open positions.</div>`;
+    return;
+  }
+
+  el.innerHTML = holdings.map(h => {
+    let pnl = ((h.ltp - h.buyPrice) * h.qty).toFixed(2);
+    let pnlPct = (((h.ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
+    let isProfit = pnl >= 0;
+    return `
+      <div class="item">
+        <div class="row">
+          <div>
+            <div class="stock">${h.sym} <small style="color:var(--muted)">(${h.qty} shares)</small></div>
+            <div class="muted">Bought @ ₹${h.buyPrice} on ${h.date}</div>
+          </div>
+          <div style="text-align:right;">
+            <b style="font-size:16px;color:${isProfit?'#4ade80':'#f87171'};">
+              ${isProfit?'+':''}₹${pnl} (${pnlPct}%)
+            </b>
+            <div class="muted">LTP: ₹${h.ltp}</div>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="metric">Stop-Loss<b>₹${h.sl}</b></div>
+          <div class="metric">Target 1<b>₹${h.t1||'-'}</b></div>
+          <div class="metric">Target 2<b>₹${h.t2||'-'}</b></div>
+          <div class="metric">Total Value<b>₹${(h.ltp*h.qty).toFixed(0)}</b></div>
+          <div class="metric">Trailing SL<b>₹${h.buyPrice}</b></div>
+          <div class="metric" style="display:flex;align-items:center;justify-content:center;">
+            <button class="btn danger" style="padding:4px 8px;font-size:10px;" onclick="removeHolding('${h.sym}')">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// -------------------------------------------------------------
+// LIVE SYNC & TELEGRAM ENGINE
+// -------------------------------------------------------------
 async function startSafeSync(){
   let queue = [...new Set([...currentStockMap.keys(), ...holdings.map(h => h.sym)])];
   if(!queue.length){ alert("Pehle file upload karein ya demo load karein!"); return; }
 
-  document.getElementById('status').textContent = "Syncing live prices...";
+  document.getElementById('status').textContent = "Syncing live data...";
   const CHUNK = 8;
   while(queue.length > 0){
     let batch = queue.splice(0, CHUNK);
@@ -551,104 +650,12 @@ async function checkAllHoldingsForSellSignals() {
   alert(triggered ? `⚡ ${triggered} alerts sent to Telegram!` : "All positions safe.");
 }
 
-function addStockToHoldingsFromCard(sym, buyPrice, sl, t1, t2){
-  document.getElementById('modalTitle').textContent = `Add ${sym} to Holdings`;
-  document.getElementById('holdSym').value = sym;
-  document.getElementById('holdBuyPrice').value = buyPrice || '';
-  document.getElementById('holdSL').value = sl || '';
-  document.getElementById('holdT1').value = t1 || '';
-  document.getElementById('holdT2').value = t2 || '';
-  document.getElementById('holdingModal').classList.remove('hidden');
-}
-
-function openManualAddModal(){
-  document.getElementById('modalTitle').textContent = `Add Position to Holdings`;
-  document.getElementById('holdSym').value = '';
-  document.getElementById('holdBuyPrice').value = '';
-  document.getElementById('holdSL').value = '';
-  document.getElementById('holdT1').value = '';
-  document.getElementById('holdT2').value = '';
-  document.getElementById('holdingModal').classList.remove('hidden');
-}
-
-function saveHolding(){
-  let sym = document.getElementById('holdSym').value.trim().toUpperCase();
-  let buyPrice = parseFloat(document.getElementById('holdBuyPrice').value);
-  let qty = parseInt(document.getElementById('holdQty').value) || 1;
-  let sl = parseFloat(document.getElementById('holdSL').value);
-  let t1 = parseFloat(document.getElementById('holdT1').value);
-  let t2 = parseFloat(document.getElementById('holdT2').value);
-
-  if(!sym || !buyPrice || !sl){ alert("Symbol, Buy Price and Stop Loss required."); return; }
-
-  let item = { sym, buyPrice, qty, sl, t1, t2, ltp: buyPrice, date: new Date().toLocaleDateString() };
-  holdings = holdings.filter(h => h.sym !== sym);
-  holdings.push(item);
-  localStorage.setItem('aplus_local_holdings', JSON.stringify(holdings));
-  closeModal('holdingModal');
-  renderHoldings();
-  document.getElementById('badgeHold').textContent = holdings.length;
-  document.getElementById('holdCount').textContent = holdings.length;
-}
-
-function removeHolding(sym){
-  holdings = holdings.filter(h => h.sym !== sym);
-  localStorage.setItem('aplus_local_holdings', JSON.stringify(holdings));
-  renderHoldings();
-  document.getElementById('badgeHold').textContent = holdings.length;
-  document.getElementById('holdCount').textContent = holdings.length;
-}
-
-function renderHoldings(){
-  let el = document.getElementById('holdingsList');
-  if(!holdings.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No open positions.</div>`;
-    return;
-  }
-
-  el.innerHTML = holdings.map(h => {
-    let pnl = ((h.ltp - h.buyPrice) * h.qty).toFixed(2);
-    let pnlPct = (((h.ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
-    let isProfit = pnl >= 0;
-    return `
-      <div class="item">
-        <div class="row">
-          <div>
-            <div class="stock">${h.sym} <small style="color:var(--muted)">(${h.qty} shares)</small></div>
-            <div class="muted">Bought @ ₹${h.buyPrice} on ${h.date}</div>
-          </div>
-          <div style="text-align:right;">
-            <b style="font-size:16px;color:${isProfit?'#4ade80':'#f87171'};">
-              ${isProfit?'+':''}₹${pnl} (${pnlPct}%)
-            </b>
-            <div class="muted">LTP: ₹${h.ltp}</div>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="metric">Stop-Loss<b>₹${h.sl}</b></div>
-          <div class="metric">Target 1<b>₹${h.t1||'-'}</b></div>
-          <div class="metric">Target 2<b>₹${h.t2||'-'}</b></div>
-          <div class="metric">Total Value<b>₹${(h.ltp*h.qty).toFixed(0)}</b></div>
-          <div class="metric">Trailing SL<b>₹${h.buyPrice}</b></div>
-          <div class="metric" style="display:flex;align-items:center;justify-content:center;">
-            <button class="btn danger" style="padding:4px 8px;font-size:10px;" onclick="removeHolding('${h.sym}')">Delete</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
 function switchTab(tabId){
   ['screener', 'holdings', 'settings'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tabId);
     document.getElementById('nav-' + t).classList.toggle('active', t === tabId);
   });
   if(tabId === 'holdings') renderHoldings();
-}
-
-function closeModal(id){ 
-  document.getElementById(id).classList.add('hidden'); 
 }
 
 function runDemo(){
@@ -672,19 +679,17 @@ function clearData(){
   document.getElementById('status').textContent = "Data cleared!";
 }
 
-// Initializer
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    let saved = localStorage.getItem('aplus_local_holdings');
-    if(saved) holdings = JSON.parse(saved);
-  } catch(e){}
+// Init Setup
+try {
+  let saved = localStorage.getItem('aplus_holdings_v3');
+  if(saved) holdings = JSON.parse(saved);
+} catch(e){}
 
-  document.getElementById('badgeHold').textContent = holdings.length;
-  document.getElementById('holdCount').textContent = holdings.length;
-  updateTelegramBadge();
-  document.getElementById('tgToken').value = localStorage.getItem('aplus_tg_token') || '';
-  document.getElementById('tgChatId').value = localStorage.getItem('aplus_tg_chat_id') || '';
-});
+document.getElementById('badgeHold').textContent = holdings.length;
+document.getElementById('holdCount').textContent = holdings.length;
+updateTelegramBadge();
+document.getElementById('tgToken').value = localStorage.getItem('aplus_tg_token') || '';
+document.getElementById('tgChatId').value = localStorage.getItem('aplus_tg_chat_id') || '';
 </script>
 </body>
 </html>

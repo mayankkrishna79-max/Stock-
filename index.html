@@ -18,7 +18,7 @@ body{padding-bottom:80px}
 header{background:#070d19;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 header h1{font-size:18px;font-weight:800}
 header small{color:var(--muted);font-size:11px}
-main{max-width:1100px;margin:auto;padding:12px}
+main{max-width:1100px;margin:auto;padding:12px;position:relative;z-index:10}
 .card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn{border:0;border-radius:8px;padding:9px 15px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -50,11 +50,20 @@ main{max-width:1100px;margin:auto;padding:12px}
 .bottom-nav button{background:none;border:0;font-weight:700;color:#94a3b8;font-size:12px;cursor:pointer}
 .bottom-nav button.active{color:var(--accent)}
 
-/* Critical Fix: Hidden elements must not block pointer clicks */
-.hidden{display:none !important; visibility:hidden !important; pointer-events:none !important;}
+/* Zero Freeze Guarantee: Invisible overlays completely disabled from receiving clicks */
+.hidden{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+  z-index:-999 !important;
+}
 
-/* Modals */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.75);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;padding:14px;
+}
 .modal{background:#1e293b;border:1px solid var(--border);max-width:540px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px;color:#fff}
 .input-group{margin-bottom:10px}
 .input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
@@ -69,7 +78,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Interactive Ready</small>
+    <small id="status">Ready • System Active</small>
   </div>
   <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Triggers</button>
 </header>
@@ -79,8 +88,8 @@ main{max-width:1100px;margin:auto;padding:12px}
   <section id="tab-screener">
     <div class="card">
       <div class="drop" onclick="triggerFileInput()">
-        <b>📁 Screener Files Upload Karein (.CSV / .XLSX / .XLS)</b><br>
-        <span style="font-size:11px;color:var(--muted);">Tap karke file chunein</span>
+        <b>📁 Screener Files Upload (.CSV / .XLSX / .XLS)</b><br>
+        <span style="font-size:11px;color:var(--muted);">Tap karke file select karein</span>
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileSelect(event)">
       </div>
       <div class="toolbar">
@@ -101,7 +110,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 
     <div class="card">
       <div class="filters">
-        <input id="search" placeholder="Search by Stock or Symbol..." oninput="renderScreener()">
+        <input id="search" placeholder="Search Symbol..." oninput="renderScreener()">
         <select id="act" onchange="renderScreener()">
           <option value="All">All Actions</option>
           <option value="BUY">BUY Only</option>
@@ -181,8 +190,8 @@ let ranked = [], currentStockMap = new Map(), holdings = [];
 let triggeredAlertsToday = new Set();
 
 function triggerFileInput(){
-  let el = document.getElementById('files');
-  if(el) el.click();
+  const f = document.getElementById('files');
+  if(f) f.click();
 }
 
 function cleanKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, ''); }
@@ -317,9 +326,6 @@ function rebuildRankedFromMap(){
   return ranked;
 }
 
-// -------------------------------------------------------------
-// EVENT LISTENERS & PARSERS
-// -------------------------------------------------------------
 async function handleFileSelect(e){
   let files = Array.from(e.target.files);
   if(!files || !files.length) return;
@@ -375,7 +381,7 @@ function renderScreener(){
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <div class="score">${x.score}</div>
-            <button class="btn success" onclick="addStockToHoldingsFromCard('${x.key}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
+            <button class="btn success" onclick="event.stopPropagation();addStockToHoldingsFromCard('${x.key}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
               + Holdings
             </button>
           </div>
@@ -440,9 +446,6 @@ function openModal(symbol){
   document.getElementById('stockModal').classList.remove('hidden');
 }
 
-// -------------------------------------------------------------
-// SYNC & TELEGRAM
-// -------------------------------------------------------------
 async function startSafeSync(){
   let queue = [...new Set([...currentStockMap.keys(), ...holdings.map(h => h.sym)])];
   if(!queue.length){ alert("Pehle file upload karein ya demo load karein!"); return; }
@@ -548,9 +551,6 @@ async function checkAllHoldingsForSellSignals() {
   alert(triggered ? `⚡ ${triggered} alerts sent to Telegram!` : "All positions safe.");
 }
 
-// -------------------------------------------------------------
-// HOLDINGS CRUD
-// -------------------------------------------------------------
 function addStockToHoldingsFromCard(sym, buyPrice, sl, t1, t2){
   document.getElementById('modalTitle').textContent = `Add ${sym} to Holdings`;
   document.getElementById('holdSym').value = sym;
@@ -673,16 +673,18 @@ function clearData(){
 }
 
 // Initializer
-try {
-  let saved = localStorage.getItem('aplus_local_holdings');
-  if(saved) holdings = JSON.parse(saved);
-} catch(e){}
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    let saved = localStorage.getItem('aplus_local_holdings');
+    if(saved) holdings = JSON.parse(saved);
+  } catch(e){}
 
-document.getElementById('badgeHold').textContent = holdings.length;
-document.getElementById('holdCount').textContent = holdings.length;
-updateTelegramBadge();
-document.getElementById('tgToken').value = localStorage.getItem('aplus_tg_token') || '';
-document.getElementById('tgChatId').value = localStorage.getItem('aplus_tg_chat_id') || '';
+  document.getElementById('badgeHold').textContent = holdings.length;
+  document.getElementById('holdCount').textContent = holdings.length;
+  updateTelegramBadge();
+  document.getElementById('tgToken').value = localStorage.getItem('aplus_tg_token') || '';
+  document.getElementById('tgChatId').value = localStorage.getItem('aplus_tg_chat_id') || '';
+});
 </script>
 </body>
 </html>

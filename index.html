@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1120">
-<title>A+ Trader Pro (Telegram Auto-Sell System)</title>
+<title>A+ Trader Pro (Latest Script & Telegram Alert)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -44,6 +44,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 .tag-buy{background:#052e16;color:#4ade80;border:1px solid #166534}
 .tag-sell{background:#450a0a;color:#f87171;border:1px solid #991b1b}
 .tag-hold{background:#1e1b4b;color:#a5b4fc;border:1px solid #4338ca}
+.tag-warn{background:#422006;color:#fde047;border:1px solid #854d0e}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
 .metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
@@ -54,10 +55,11 @@ main{max-width:1100px;margin:auto;padding:12px}
 
 /* Modal Overlay */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
-.modal{background:#1e293b;border:1px solid var(--border);max-width:520px;width:100%;border-radius:16px;padding:18px;color:#fff}
+.modal{background:#1e293b;border:1px solid var(--border);max-width:540px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px;color:#fff}
 .input-group{margin-bottom:10px}
 .input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
 .input-group input{width:100%;padding:8px 10px;background:#0b1120;border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px}
+.factor-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #334155;font-size:12px}
 
 @media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
@@ -67,7 +69,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Ready • Telegram Alert Engine</small>
+    <small id="status">Ready • Live Sync Engine</small>
   </div>
   <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Triggers</button>
 </header>
@@ -78,7 +80,7 @@ main{max-width:1100px;margin:auto;padding:12px}
     <div class="card">
       <div class="drop" onclick="document.getElementById('files').click()">
         <b>📁 Upload Screener Files (.CSV / .XLSX)</b><br>
-        <span style="font-size:11px;color:var(--muted);">Tap to load watchlist</span>
+        <span style="font-size:11px;color:var(--muted);">Tap to load screener data</span>
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
       <div class="toolbar">
@@ -89,16 +91,16 @@ main{max-width:1100px;margin:auto;padding:12px}
 
     <div class="kpis">
       <div class="kpi"><small>Total Stocks</small><b id="n">0</b></div>
-      <div class="kpi"><small>BUY Setups</small><b id="buy" style="color:#4ade80;">0</b></div>
+      <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
+      <div class="kpi"><small>BUY Signals</small><b id="buy" style="color:#4ade80;">0</b></div>
+      <div class="kpi"><small>Missing Critical</small><b id="missingCount" style="color:#f87171;">0</b></div>
       <div class="kpi"><small>My Holdings</small><b id="holdCount" style="color:var(--accent);">0</b></div>
-      <div class="kpi"><small>Sell Alerts Today</small><b id="alertCount" style="color:#f87171;">0</b></div>
-      <div class="kpi"><small>Top Score</small><b id="top">0</b></div>
-      <div class="kpi"><small>Telegram</small><b id="tgStatus" style="font-size:12px;color:#94a3b8;">Not Configured</b></div>
+      <div class="kpi"><small>Telegram</small><b id="tgStatus" style="font-size:11px;color:#94a3b8;">Checking...</b></div>
     </div>
 
     <div class="card">
       <div class="filters">
-        <input id="search" placeholder="Search Symbol..." oninput="renderScreener()">
+        <input id="search" placeholder="Search by Stock or Symbol..." oninput="renderScreener()">
         <select id="act" onchange="renderScreener()">
           <option value="All">All Actions</option>
           <option value="BUY">BUY Only</option>
@@ -130,30 +132,34 @@ main{max-width:1100px;margin:auto;padding:12px}
     <div class="card">
       <h3 style="margin-bottom:12px;">⚙️ Telegram Alert Configuration</h3>
       <div class="input-group">
-        <label>Telegram Bot Token (from @BotFather):</label>
-        <input id="tgToken" placeholder="e.g. 7123456789:AAHk...">
+        <label>Telegram Bot Token:</label>
+        <input id="tgToken" placeholder="e.g. 8860975619:AAHk...">
       </div>
       <div class="input-group">
-        <label>Your Telegram Chat ID (from @userinfobot):</label>
-        <input id="tgChatId" placeholder="e.g. 987654321">
+        <label>Your Numeric Chat ID (Digits only):</label>
+        <input id="tgChatId" placeholder="e.g. 1234567890">
       </div>
       <div class="toolbar">
         <button class="btn success" onclick="saveTelegramSettings()">💾 Save Credentials</button>
         <button class="btn primary" onclick="sendTestTelegramMessage()">📲 Send Test Alert</button>
       </div>
-      <p class="muted" style="margin-top:12px;font-size:11px;">Credentials are stored locally in your browser storage only.</p>
+      <p class="muted" style="margin-top:12px;font-size:11px;">Apni numeric Chat ID check karne ke liye browser me ye link open karein:<br>
+      <code style="color:var(--accent);">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code></p>
     </div>
   </section>
 </main>
 
-<!-- Bottom Nav -->
 <nav class="bottom-nav">
   <button id="nav-screener" class="active" onclick="switchTab('screener')">📊 Screener</button>
   <button id="nav-holdings" onclick="switchTab('holdings')">💼 My Holdings (<span id="badgeHold">0</span>)</button>
   <button id="nav-settings" onclick="switchTab('settings')">⚙️ Settings & Alert</button>
 </nav>
 
-<!-- Add / Edit Holding Modal -->
+<!-- Modals -->
+<div id="stockModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('stockModal')">
+  <div class="modal" id="stockModalContent"></div>
+</div>
+
 <div id="holdingModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('holdingModal')">
   <div class="modal">
     <div class="row" style="margin-bottom:12px;">
@@ -162,7 +168,7 @@ main{max-width:1100px;margin:auto;padding:12px}
     </div>
     <div class="input-group">
       <label>NSE Symbol:</label>
-      <input id="holdSym" uppercase>
+      <input id="holdSym">
     </div>
     <div class="input-group">
       <label>Buy Price (₹):</label>
@@ -189,10 +195,17 @@ main{max-width:1100px;margin:auto;padding:12px}
 </div>
 
 <script>
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwvBxHaqqAyiCTk5il2v0D6wZ42LmrSqQbca4l-dv9tNgfaZ9JOpf3QMKY1kjhCSKt8/exec";
+// Naya Updated Google Apps Script Endpoint
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyOsZ9j-RnFWhjFXQ-b8qwUL6Xo-Xnl9ETJxpZVkpLnQYTSt2zbZ8lgFrlH014FoRc2xg/exec";
+
 const DB='aplus_trader_db', VER=2;
 let db, ranked=[], currentStockMap = new Map(), holdings = [];
 let triggeredAlertsToday = new Set();
+
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
 
 function openDB(){
   return new Promise((res,rej)=>{
@@ -257,7 +270,114 @@ function getVal(rows, searchKeys){
 }
 
 // -------------------------------------------------------------
-// TELEGRAM AUTO-DISPATCH ENGINE
+// SCORER & STRICT AUDIT LOGIC
+// -------------------------------------------------------------
+function scoreStock(o){
+  let rows = o.rows || [o];
+  let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice', 'price']);
+  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'fiftyTwoWeekHigh', '1yrhigh', 'high52']);
+  let wh = getVal(rows, ['Week High', 'Weekly High']);
+  let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14', 'dayrsi']);
+  let cci = getVal(rows, ['cci', 'CCI']);
+  let d = getVal(rows, ['Trendlyne Durability Score', 'Durability']);
+  let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum']);
+  let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation']);
+  let dv = getVal(rows, ['Day Volume', 'Volume', 'Total Traded Quantity', 'dayvolume', 'volume']);
+  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'Avg Volume', 'monthvolumeavg']);
+  let sm = getVal(rows, ['Month Change %', '1M Return']);
+  let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
+  let ni = getVal(rows, ['Nifty50 Month change %', 'Nifty Return']);
+  let e5 = getVal(rows, ['ema5', 'EMA5', 'EMA 5']);
+  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10', 'ema5']);
+  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20', 'dayema20']);
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50', 'daysma50']);
+  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
+  let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
+  let support = getVal(rows, ['Support', 'Support 1', 'S1']);
+  let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
+
+  // Missing indicators strictly monitored
+  let missing = [];
+  if (!Number.isFinite(p)) missing.push('Price');
+  if (!Number.isFinite(hi)) missing.push('52W High');
+  if (!Number.isFinite(e20)) missing.push('EMA20');
+  if (!Number.isFinite(rsi) && !Number.isFinite(cci)) missing.push('RSI');
+  if (!Number.isFinite(dv) && !Number.isFinite(mv)) missing.push('Volume');
+
+  let pts = 0, max = 0;
+  let factors = [];
+  const add = (label, w, ok, available, desc) => {
+    if(available){
+      max += w;
+      if(ok) pts += w;
+      factors.push({label, weight: w, passed: ok, desc});
+    }
+  };
+
+  add('Multi-Screener Match', 20, rows.length >= 2, true, `Found in ${rows.length} file(s)`);
+  add('Price > Short EMA', 5, p > (Number.isFinite(e10) ? e10 : e5), Number.isFinite(p) && (Number.isFinite(e10) || Number.isFinite(e5)), `₹${p} > ₹${e10||e5}`);
+  add('Price > EMA20', 10, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
+  add('Price > 50MA', 10, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
+  add('Golden Alignment (20 > 50)', 10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50), `EMA20 (${e20}) > EMA50 (${s50})`);
+
+  let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
+  add('Near 52W High (<= 5%)', 10, gap >= 0 && gap <= 5, Number.isFinite(gap), `${gap ? gap.toFixed(1) : ''}% away from 52W High`);
+  add('Sector Outperformance', 5, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
+  add('Market Outperformance', 5, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
+
+  let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
+  add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly avg`);
+  
+  if(Number.isFinite(rsi)){
+    add('Momentum (RSI 60-75)', 10, rsi >= 60 && rsi <= 75, true, `RSI: ${rsi}`);
+  } else if(Number.isFinite(cci)){
+    add('Momentum (CCI > 100)', 10, cci >= 100, true, `CCI: ${cci}`);
+  }
+
+  add('High Durability (> 65)', 5, d > 65, Number.isFinite(d), `Durability: ${d}`);
+  add('Momentum Score (> 59)', 5, m > 59, Number.isFinite(m), `Score: ${m}`);
+  add('Valuation (> 40)', 5, v > 40, Number.isFinite(v), `Valuation: ${v}`);
+
+  let score = max ? Math.min(100, (pts / max) * 100) : 50;
+  let grade = score >= 80 ? 'A+' : score >= 65 ? 'A' : score >= 50 ? 'Watchlist' : 'Avoid';
+
+  let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
+  let entry = Number.isFinite(resistance) ? +(resistance * 1.005).toFixed(2) : (Number.isFinite(p) ? p : '-');
+  let supportLevel = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
+  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(p) ? p * 0.03 : 1);
+  let stop = Number.isFinite(supportLevel) ? +(supportLevel - buffer).toFixed(2) : (entry !== '-' ? +(entry * 0.97).toFixed(2) : '-');
+  
+  let risk = (entry !== '-' && stop !== '-') ? (entry - stop) : NaN;
+  let t1 = Number.isFinite(risk) && risk > 0 ? +(entry + 2 * risk).toFixed(2) : '-';
+  let t2 = Number.isFinite(risk) && risk > 0 ? +(entry + 3 * risk).toFixed(2) : '-';
+  let rr = Number.isFinite(risk) && risk > 0 ? `1:2.0` : '-';
+
+  let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
+  let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
+
+  return {
+    stock: o.stock || o.key, key: o.key,
+    price: Number.isFinite(p) ? p : '-',
+    sector: o.sector || '',
+    score: +score.toFixed(1), grade, action,
+    entry, stop, t1, t2, rr,
+    screeners: rows.length,
+    gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
+    vr: Number.isFinite(vr) ? +vr.toFixed(2) : '-',
+    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
+    pts, max, factors, missing
+  };
+}
+
+function rebuildRankedFromMap(){
+  let list = [];
+  currentStockMap.forEach(stockObj => list.push(scoreStock(stockObj)));
+  ranked = list.sort((a,b) => b.score - a.score);
+  return ranked;
+}
+
+// -------------------------------------------------------------
+// TELEGRAM ALERT ENGINE
 // -------------------------------------------------------------
 async function sendTelegramAlert(message) {
   let token = localStorage.getItem('aplus_tg_token');
@@ -277,20 +397,19 @@ async function sendTelegramAlert(message) {
     });
     return res.ok;
   } catch(e) {
-    console.error("Telegram API Error:", e);
     return false;
   }
 }
 
 async function sendTestTelegramMessage(){
-  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Test Alert</b>\n\nTelegram integration successful! You will receive instant Auto-Sell signals here.");
-  alert(ok ? "✅ Test message sent! Check Telegram." : "❌ Failed to send. Please check your Bot Token & Chat ID.");
+  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Test Alert</b>\n\nTelegram integration successful! Auto-sell signals will arrive here.");
+  alert(ok ? "✅ Test alert sent! Telegram check karein." : "❌ Failed. Bot token aur numeric Chat ID check karein.");
 }
 
 function saveTelegramSettings(){
   let token = document.getElementById('tgToken').value.trim();
   let chatId = document.getElementById('tgChatId').value.trim();
-  if(!token || !chatId){ alert("Both fields are required."); return; }
+  if(!token || !chatId){ alert("Dono fields fill karein."); return; }
   localStorage.setItem('aplus_tg_token', token);
   localStorage.setItem('aplus_tg_chat_id', chatId);
   updateTelegramBadge();
@@ -310,18 +429,14 @@ function updateTelegramBadge(){
   }
 }
 
-// -------------------------------------------------------------
-// AUTO-SELL CHECKING LOGIC
-// -------------------------------------------------------------
 async function checkAllHoldingsForSellSignals() {
-  if(!holdings.length){ alert("No open holdings to check."); return; }
+  if(!holdings.length){ alert("Portfolio me koi open position nahi hai."); return; }
   
   let alertsTriggered = 0;
   for(let h of holdings){
     let ltp = h.ltp || h.buyPrice;
     let sym = h.sym;
 
-    // Condition 1: Hard Stop Loss Hit
     if(ltp <= h.sl && !triggeredAlertsToday.has(`${sym}_SL`)){
       triggeredAlertsToday.add(`${sym}_SL`);
       alertsTriggered++;
@@ -333,26 +448,22 @@ async function checkAllHoldingsForSellSignals() {
                 `<b>SL Level:</b> ₹${h.sl}\n` +
                 `<b>Buy Price:</b> ₹${h.buyPrice}\n` +
                 `<b>P&L:</b> ${lossPct}%\n\n` +
-                `<i>Action: Exit complete position to preserve capital.</i>`;
+                `<i>Action: Exit complete position immediately.</i>`;
       await sendTelegramAlert(msg);
-    }
-    // Condition 2: Target 2 Achieved (Full Exit)
-    else if(ltp >= h.t2 && !triggeredAlertsToday.has(`${sym}_T2`)){
+    } else if(ltp >= h.t2 && !triggeredAlertsToday.has(`${sym}_T2`)){
       triggeredAlertsToday.add(`${sym}_T2`);
       alertsTriggered++;
       let gainPct = (((ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
       let msg = `🎯 <b>PROFIT BOOKING (TARGET 2 HIT)</b>\n\n` +
                 `<b>Stock:</b> #${sym}\n` +
-                `<b>Trigger:</b> Full Target Achieved\n` +
+                `<b>Trigger:</b> Final Target Achieved\n` +
                 `<b>LTP:</b> ₹${ltp}\n` +
                 `<b>Target 2:</b> ₹${h.t2}\n` +
                 `<b>Buy Price:</b> ₹${h.buyPrice}\n` +
                 `<b>Gain:</b> +${gainPct}%\n\n` +
-                `<i>Action: Book final profits & close trade.</i>`;
+                `<i>Action: Book full profit & close trade.</i>`;
       await sendTelegramAlert(msg);
-    }
-    // Condition 3: Target 1 Hit (Book 50% & Trail to Cost)
-    else if(ltp >= h.t1 && !triggeredAlertsToday.has(`${sym}_T1`)){
+    } else if(ltp >= h.t1 && !triggeredAlertsToday.has(`${sym}_T1`)){
       triggeredAlertsToday.add(`${sym}_T1`);
       alertsTriggered++;
       let gainPct = (((ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
@@ -360,16 +471,109 @@ async function checkAllHoldingsForSellSignals() {
                 `<b>Stock:</b> #${sym}\n` +
                 `<b>LTP:</b> ₹${ltp} (+${gainPct}%)\n` +
                 `<b>Target 1:</b> ₹${h.t1}\n\n` +
-                `<i>Action: Book 50% profit now. Trail remaining Stop-Loss to Breakeven (₹${h.buyPrice}).</i>`;
+                `<i>Action: Book 50% profit. Trail remaining SL to Breakeven (₹${h.buyPrice}).</i>`;
       await sendTelegramAlert(msg);
     }
   }
 
-  document.getElementById('alertCount').textContent = triggeredAlertsToday.size;
   renderHoldings();
   if(alertsTriggered > 0){
     alert(`⚡ ${alertsTriggered} Auto-Sell signals detected and dispatched to Telegram!`);
+  } else {
+    alert("Sabhi positions safe hain. Koi Stop-Loss ya Target breach nahi hua.");
   }
+}
+
+// -------------------------------------------------------------
+// RENDER SCREENER & HOLDINGS
+// -------------------------------------------------------------
+function renderScreener(){
+  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
+  let a = document.getElementById('act')?.value || 'All';
+  let filtered = ranked.filter(x => {
+    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
+    let matchAction = a === 'All' || x.action === a;
+    return matchQuery && matchAction;
+  });
+
+  let el = document.getElementById('screenerList');
+  if(!filtered.length){
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map((x, i) => `
+    <div class="item">
+      <div class="row" onclick="openModal('${escapeHtml(x.key)}')">
+        <div>
+          <div class="stock">${i+1}. ${escapeHtml(x.stock)} <small style="color:var(--accent);">(${escapeHtml(x.key)})</small></div>
+          <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + escapeHtml(x.sector) : ''} • Match: ${x.screeners} file(s)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="score">${x.score}</div>
+          <button class="btn success" onclick="event.stopPropagation();addStockToHoldingsFromCard('${escapeHtml(x.key)}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
+            + Holdings
+          </button>
+        </div>
+      </div>
+
+      <div class="tags" onclick="openModal('${escapeHtml(x.key)}')">
+        <span class="tag tag-hold">Grade ${escapeHtml(x.grade)}</span>
+        <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${escapeHtml(x.action)}</span>
+        ${x.missing.length ? `<span class="tag tag-sell">Missing: ${escapeHtml(x.missing.join(', '))}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
+      </div>
+
+      <div class="grid" onclick="openModal('${escapeHtml(x.key)}')">
+        <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
+        <div class="metric">Stop-Loss<b>₹${x.stop}</b></div>
+        <div class="metric">Target 1<b>₹${x.t1}</b></div>
+        <div class="metric">Target 2<b>₹${x.t2}</b></div>
+        <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
+        <div class="metric">Momentum<b>${x.rsi}</b></div>
+      </div>
+    </div>
+  `).join('');
+
+  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  document.getElementById('n').textContent = ranked.length;
+  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
+  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
+  document.getElementById('missingCount').textContent = missingTotal;
+  document.getElementById('top').textContent = ranked[0]?.score || 0;
+}
+
+function openModal(symbol){
+  let x = ranked.find(item => item.key === symbol);
+  if(!x) return;
+  let modalContent = document.getElementById('stockModalContent');
+  modalContent.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="font-size:18px;">${escapeHtml(x.stock)} (${escapeHtml(x.key)})</h2>
+      <button class="btn soft" onclick="closeModal('stockModal')">✕</button>
+    </div>
+    <div style="font-size:13px;margin-bottom:14px;">
+      <b>Quantitative Score:</b> ${x.score}/100 (${x.pts} of ${x.max} points earned)
+    </div>
+    <h4 style="font-size:12px;margin-bottom:6px;color:var(--muted);">Parameters Audit:</h4>
+    ${x.factors.map(f => `
+      <div class="factor-row">
+        <span>${f.passed ? '✅' : '❌'} ${escapeHtml(f.label)} <small style="color:var(--muted)">(${escapeHtml(f.desc)})</small></span>
+        <b>${f.passed ? '+' + f.weight : '0'} pts</b>
+      </div>
+    `).join('')}
+
+    ${x.missing.length ? `
+      <div style="margin-top:12px;background:#450a0a;padding:8px 10px;border-radius:8px;font-size:11px;color:#f87171;">
+        <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
+        <br><span style="color:#94a3b8;">Tap "100% Google Finance Sync" to update these fields.</span>
+      </div>
+    ` : `
+      <div style="margin-top:12px;background:#052e16;padding:8px 10px;border-radius:8px;font-size:11px;color:#4ade80;">
+        <b>✅ All critical parameters 100% synced!</b>
+      </div>
+    `}
+  `;
+  document.getElementById('stockModal').classList.remove('hidden');
 }
 
 // -------------------------------------------------------------
@@ -378,10 +582,10 @@ async function checkAllHoldingsForSellSignals() {
 function addStockToHoldingsFromCard(sym, buyPrice, sl, t1, t2){
   document.getElementById('modalTitle').textContent = `Add ${sym} to Holdings`;
   document.getElementById('holdSym').value = sym;
-  document.getElementById('holdBuyPrice').value = buyPrice;
-  document.getElementById('holdSL').value = sl;
-  document.getElementById('holdT1').value = t1;
-  document.getElementById('holdT2').value = t2;
+  document.getElementById('holdBuyPrice').value = buyPrice || '';
+  document.getElementById('holdSL').value = sl || '';
+  document.getElementById('holdT1').value = t1 || '';
+  document.getElementById('holdT2').value = t2 || '';
   document.getElementById('holdingModal').classList.remove('hidden');
 }
 
@@ -417,7 +621,6 @@ async function saveHolding(){
   renderHoldings();
   document.getElementById('badgeHold').textContent = holdings.length;
   document.getElementById('holdCount').textContent = holdings.length;
-  alert(`Added ${sym} to tracked portfolio!`);
 }
 
 async function removeHolding(sym){
@@ -433,7 +636,7 @@ async function removeHolding(sym){
 function renderHoldings(){
   let el = document.getElementById('holdingsList');
   if(!holdings.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No open positions. Add from Screener or tap "+ Add New Position".</div>`;
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No open positions. Add from Screener tab.</div>`;
     return;
   }
 
@@ -442,9 +645,8 @@ function renderHoldings(){
     let pnlPct = (((h.ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
     let isProfit = pnl >= 0;
     
-    // Status check
     let statusBadge = `<span class="tag tag-hold">TRACKING</span>`;
-    if(h.ltp <= h.sl) statusBadge = `<span class="tag tag-sell">SL BREACHED - SELL</span>`;
+    if(h.ltp <= h.sl) statusBadge = `<span class="tag tag-sell">SL BREACHED - EXIT</span>`;
     else if(h.ltp >= h.t2) statusBadge = `<span class="tag tag-buy">TARGET 2 HIT - SELL</span>`;
     else if(h.ltp >= h.t1) statusBadge = `<span class="tag tag-buy">TARGET 1 HIT - BOOK 50%</span>`;
 
@@ -452,8 +654,8 @@ function renderHoldings(){
       <div class="item">
         <div class="row">
           <div>
-            <div class="stock">${h.sym} <small style="color:var(--muted)">(${h.qty} shares)</small></div>
-            <div class="muted">Bought at ₹${h.buyPrice} on ${h.date}</div>
+            <div class="stock">${escapeHtml(h.sym)} <small style="color:var(--muted)">(${h.qty} shares)</small></div>
+            <div class="muted">Bought @ ₹${h.buyPrice} on ${h.date}</div>
           </div>
           <div style="text-align:right;">
             <b style="font-size:16px;color:${isProfit?'#4ade80':'#f87171'};">
@@ -462,9 +664,7 @@ function renderHoldings(){
             <div class="muted">LTP: ₹${h.ltp}</div>
           </div>
         </div>
-
         <div class="tags">${statusBadge}</div>
-
         <div class="grid">
           <div class="metric">Stop-Loss<b>₹${h.sl}</b></div>
           <div class="metric">Target 1<b>₹${h.t1||'-'}</b></div>
@@ -472,116 +672,12 @@ function renderHoldings(){
           <div class="metric">Total Value<b>₹${(h.ltp*h.qty).toFixed(0)}</b></div>
           <div class="metric">Trailing SL<b>₹${h.buyPrice}</b></div>
           <div class="metric" style="display:flex;align-items:center;justify-content:center;">
-            <button class="btn danger" style="padding:4px 8px;font-size:10px;" onclick="removeHolding('${h.sym}')">Close / Delete</button>
+            <button class="btn danger" style="padding:4px 8px;font-size:10px;" onclick="removeHolding('${escapeHtml(h.sym)}')">Delete</button>
           </div>
         </div>
       </div>
     `;
   }).join('');
-}
-
-// -------------------------------------------------------------
-// CORE SCORER & SCREENER LOGIC
-// -------------------------------------------------------------
-function scoreStock(o){
-  let rows = o.rows || [o];
-  let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice', 'price']);
-  let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'fiftyTwoWeekHigh', '1yrhigh', 'high52']);
-  let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14', 'dayrsi']);
-  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'ema5']);
-  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'ema20', 'dayema20']);
-  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'sma50', 'daysma50']);
-  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
-  let dv = getVal(rows, ['Day Volume', 'Volume', 'dayvolume']);
-  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'monthvolumeavg']);
-  let sm = getVal(rows, ['Month Change %', '1M Return']);
-  let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
-
-  if(!Number.isFinite(e20) && Number.isFinite(p)) e20 = +(p * 0.985).toFixed(2);
-  if(!Number.isFinite(s50) && Number.isFinite(p)) s50 = +(p * 0.965).toFixed(2);
-  if(!Number.isFinite(rsi) && Number.isFinite(p) && Number.isFinite(hi)) {
-    let proximity = ((hi - p) / hi) * 100;
-    rsi = +(68 - Math.min(20, Math.max(0, proximity))).toFixed(1);
-  }
-
-  let pts = 0, max = 0;
-  const add = (w, ok, avail) => { if(avail){ max += w; if(ok) pts += w; } };
-  add(20, rows.length >= 2, true);
-  add(10, p > e20, Number.isFinite(p) && Number.isFinite(e20));
-  add(10, p > s50, Number.isFinite(p) && Number.isFinite(s50));
-  add(10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50));
-  let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
-  add(10, gap >= 0 && gap <= 5, Number.isFinite(gap));
-  add(10, (dv/mv) >= 1.5, Number.isFinite(dv) && Number.isFinite(mv) && mv > 0);
-  add(10, rsi >= 60 && rsi <= 75, Number.isFinite(rsi));
-  add(10, sm > sec, Number.isFinite(sm) && Number.isFinite(sec));
-
-  let score = max ? Math.min(100, (pts / max) * 100) : 50;
-  let grade = score >= 80 ? 'A+' : score >= 65 ? 'A' : score >= 50 ? 'Watchlist' : 'Avoid';
-  let action = (score >= 70 && p > e20) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
-
-  let entry = Number.isFinite(hi) && hi > p ? +(hi * 1.005).toFixed(2) : p;
-  let buffer = Number.isFinite(atr) ? atr * 0.6 : p * 0.03;
-  let stop = +(entry - buffer).toFixed(2);
-  let risk = entry - stop;
-  let t1 = +(entry + 2 * risk).toFixed(2);
-  let t2 = +(entry + 3 * risk).toFixed(2);
-
-  return {
-    stock: o.stock || o.key, key: o.key, price: p||'-',
-    score: +score.toFixed(1), grade, action,
-    entry, stop, t1, t2, gap: Number.isFinite(gap)?+gap.toFixed(1):'-',
-    rsi: Number.isFinite(rsi)?+rsi.toFixed(1):'-'
-  };
-}
-
-function renderScreener(){
-  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
-  let a = document.getElementById('act')?.value || 'All';
-  let filtered = ranked.filter(x => {
-    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
-    let matchAction = a === 'All' || x.action === a;
-    return matchQuery && matchAction;
-  });
-
-  let el = document.getElementById('screenerList');
-  if(!filtered.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
-    return;
-  }
-
-  el.innerHTML = filtered.map((x, i) => `
-    <div class="item">
-      <div class="row">
-        <div>
-          <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
-          <div class="muted">Price: ₹${x.price} • 52W Gap: ${x.gap}%</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="score">${x.score}</div>
-          <button class="btn success" onclick="addStockToHoldingsFromCard('${x.key}', ${x.price}, ${x.stop}, ${x.t1}, ${x.t2})">
-            + Add to Holdings
-          </button>
-        </div>
-      </div>
-      <div class="tags">
-        <span class="tag tag-hold">Grade ${x.grade}</span>
-        <span class="tag ${x.action==='BUY'?'tag-buy':'tag-sell'}">${x.action}</span>
-      </div>
-      <div class="grid">
-        <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
-        <div class="metric">Stop-Loss<b>₹${x.stop}</b></div>
-        <div class="metric">Target 1<b>₹${x.t1}</b></div>
-        <div class="metric">Target 2<b>₹${x.t2}</b></div>
-        <div class="metric">Momentum<b>${x.rsi}</b></div>
-        <div class="metric">Auto-Sell Track<b>Pre-configured</b></div>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('n').textContent = ranked.length;
-  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
-  document.getElementById('top').textContent = ranked[0]?.score || 0;
 }
 
 // -------------------------------------------------------------
@@ -602,13 +698,12 @@ async function startSafeSync(){
           for(let sym of batch){
             let item = dataMap[sym] || dataMap[sym.toUpperCase()];
             if(item && item.price){
-              // Update Screener Map
               if(currentStockMap.has(sym)){
                 let target = currentStockMap.get(sym).rows[0];
                 target.currentprice = Number(item.price);
                 if(item.high52) target['1yrhigh'] = Number(item.high52);
+                if(item.volume) target.dayvolume = Number(item.volume);
               }
-              // Update Open Holdings LTP
               let holdItem = holdings.find(h => h.sym === sym);
               if(holdItem){
                 holdItem.ltp = Number(item.price);
@@ -621,18 +716,12 @@ async function startSafeSync(){
     } catch(e){}
   }
 
-  // Refresh Screener & Check Sell Signals
-  let list = [];
-  currentStockMap.forEach(stockObj => list.push(scoreStock(stockObj)));
-  ranked = list.sort((a,b) => b.score - a.score);
+  rebuildRankedFromMap();
   renderScreener();
   await checkAllHoldingsForSellSignals();
-  alert("100% Google Finance Sync Completed & Sell Rules Checked!");
+  alert("100% Google Finance Sync Completed!");
 }
 
-// -------------------------------------------------------------
-// NAVIGATION & MODALS
-// -------------------------------------------------------------
 function switchTab(tabId){
   ['screener', 'holdings', 'settings'].forEach(t => {
     document.getElementById('tab-' + t).classList.toggle('hidden', t !== tabId);
@@ -642,7 +731,6 @@ function switchTab(tabId){
 }
 function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 
-// File Parser
 async function parseFile(file){
   const buffer = await file.arrayBuffer();
   let workbook = XLSX.read(buffer, { type: 'array' });
@@ -665,9 +753,7 @@ document.getElementById('files').addEventListener('change', async (e) => {
       currentStockMap.get(k).rows.push(r);
     });
   }
-  let list = [];
-  currentStockMap.forEach(v => list.push(scoreStock(v)));
-  ranked = list.sort((a,b) => b.score - a.score);
+  rebuildRankedFromMap();
   renderScreener();
 });
 
@@ -680,9 +766,7 @@ function runDemo(){
     let norm = normalizeRow(r); norm._raw = r;
     currentStockMap.set(r['Stock name'], { key: r['Stock name'], stock: r['Stock name'], rows: [norm] });
   });
-  let list = [];
-  currentStockMap.forEach(v => list.push(scoreStock(v)));
-  ranked = list.sort((a,b) => b.score - a.score);
+  rebuildRankedFromMap();
   renderScreener();
 }
 

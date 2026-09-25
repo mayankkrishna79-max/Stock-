@@ -3,61 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101828">
-<title>A+ Trader Pro (Safe Live Sync)</title>
+<meta name="theme-color" content="#0b1120">
+<title>A+ Trader Pro (Telegram Auto-Sell System)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  --primary:#315efb; --primary-soft:#eef2ff; --bg:#f5f7fb; --card-bg:#fff;
-  --text:#172033; --muted:#667085; --border:#e4e7ec; --accent:#0ea5e9; --success:#12b76a;
+  --primary:#2563eb; --bg:#0b1120; --card-bg:#1e293b; --text:#f8fafc;
+  --muted:#94a3b8; --border:#334155; --accent:#38bdf8; --success:#22c55e;
+  --warning:#eab308; --danger:#ef4444;
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   color:var(--text);background:var(--bg)
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{padding-bottom:80px}
-header{background:#101828;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center}
-header h1{font-size:19px;font-weight:800}
-header small{color:#cbd5e1;font-size:12px}
-main{max-width:1050px;margin:auto;padding:12px}
-.card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+header{background:#070d19;color:#fff;padding:12px 18px;position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+header h1{font-size:17px;font-weight:800}
+header small{color:var(--muted);font-size:11px}
+main{max-width:1100px;margin:auto;padding:12px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.btn{border:0;border-radius:9px;padding:9px 15px;font-weight:700;font-size:13px;cursor:pointer;transition:0.15s ease}
-.primary{background:var(--primary);color:#fff}.primary:hover{opacity:0.9}
-.soft{background:var(--primary-soft);color:var(--primary)}.soft:hover{background:#e0e7ff}
-.accent{background:#0284c7;color:#fff}.accent:hover{opacity:0.9}
-.success{background:var(--success);color:#fff}.success:hover{opacity:0.9}
-.danger{background:#fff0f0;color:#b42318}
-.drop{border:2px dashed #cbd5e1;border-radius:12px;padding:22px;text-align:center;color:var(--muted);background:#fcfcfd;cursor:pointer}
-.drop:hover{border-color:var(--primary);background:#f8faff}
+.btn{border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.primary{background:var(--primary);color:#fff}.soft{background:#334155;color:#f8fafc}
+.success{background:var(--success);color:#052e16}.danger{background:#450a0a;color:#f87171}
+.accent{background:#0284c7;color:#fff}
+.drop{border:2px dashed #475569;border-radius:12px;padding:20px;text-align:center;color:var(--muted);background:#131d31;cursor:pointer}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.kpi{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
+.kpi{border:1px solid var(--border);border-radius:12px;padding:10px;background:#131d31}
 .kpi small{color:var(--muted);font-size:11px;font-weight:600}
-.kpi b{display:block;font-size:22px;color:#101828;margin-top:3px}
+.kpi b{display:block;font-size:18px;color:#fff;margin-top:2px}
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.filters input,.filters select{width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:8px;outline:none;font-size:13px}
-.item{border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 0;background:#fff;cursor:pointer;transition:border-color 0.2s}
-.item:hover{border-color:#b2ccff}
-.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.stock{font-size:15px;font-weight:800;color:#101828}
-.score{font-size:22px;font-weight:900;color:var(--primary)}
+.filters input,.filters select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#0b1120;color:#fff;font-size:12px}
+.item{border:1px solid var(--border);border-radius:12px;padding:14px;margin:10px 0;background:#131d31;transition:border-color 0.2s}
+.item:hover{border-color:var(--accent)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stock{font-size:16px;font-weight:800;color:#fff}
+.score{font-size:22px;font-weight:900;color:var(--accent)}
 .muted{color:var(--muted);font-size:11px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.tag{padding:3px 8px;border-radius:99px;font-size:10px;font-weight:800}
-.a{background:#ecfdf3;color:#027a48}.w{background:#fffaeb;color:#b54708}.r{background:#fff1f3;color:#c01048}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.metric{background:#f8fafc;border-radius:8px;padding:6px 8px;font-size:10px;color:var(--muted)}
-.metric b{display:block;color:#172033;font-size:13px;margin-top:2px}
+.tag{padding:3px 8px;border-radius:6px;font-size:10px;font-weight:800}
+.tag-buy{background:#052e16;color:#4ade80;border:1px solid #166534}
+.tag-sell{background:#450a0a;color:#f87171;border:1px solid #991b1b}
+.tag-hold{background:#1e1b4b;color:#a5b4fc;border:1px solid #4338ca}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
+.metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#070d19;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px;z-index:30}
+.bottom-nav button{background:none;border:0;font-weight:700;color:#94a3b8;font-size:12px;cursor:pointer}
+.bottom-nav button.active{color:var(--accent)}
 .hidden{display:none !important;}
 
-#syncContainer{margin-top:12px;padding:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px}
-.progress-bar-bg{height:10px;width:100%;background:#e0f2fe;border-radius:99px;margin:10px 0;overflow:hidden}
-.progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg, #0284c7, #12b76a);transition:width 0.25s ease}
-.sync-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1}
-.sync-log{max-height:85px;overflow-y:auto;background:#fff;border:1px solid #e2e8f0;padding:6px 10px;border-radius:6px;font-family:monospace;font-size:11px;color:#334155;margin-top:8px}
-
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
-.modal{background:#fff;max-width:550px;width:100%;border-radius:16px;max-height:85vh;overflow-y:auto;padding:18px;box-shadow: 0 10px 25px rgba(0,0,0,0.2)}
-.factor-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+/* Modal Overlay */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
+.modal{background:#1e293b;border:1px solid var(--border);max-width:520px;width:100%;border-radius:16px;padding:18px;color:#fff}
+.input-group{margin-bottom:10px}
+.input-group label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.input-group input{width:100%;padding:8px 10px;background:#0b1120;border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px}
 
 @media(min-width:700px){.grid{grid-template-columns:repeat(6,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}}
 </style>
@@ -65,55 +65,41 @@ main{max-width:1050px;margin:auto;padding:12px}
 <body>
 
 <header>
-  <h1>🔥 A+ Trader Pro</h1>
-  <small id="status">Ready • Local Storage</small>
+  <div>
+    <h1>🔥 A+ Trader Pro</h1>
+    <small id="status">Ready • Telegram Alert Engine</small>
+  </div>
+  <button class="btn accent" onclick="checkAllHoldingsForSellSignals()">🔔 Scan Sell Triggers</button>
 </header>
 
 <main>
-  <section id="home">
+  <!-- TAB 1: Screener Ranker -->
+  <section id="tab-screener">
     <div class="card">
       <div class="drop" onclick="document.getElementById('files').click()">
-        <b>📁 Upload Screener Files (.CSV / .XLSX / .XLS)</b><br>
-        <span style="font-size:12px;color:#667085;">Tap to upload CSV</span>
+        <b>📁 Upload Screener Files (.CSV / .XLSX)</b><br>
+        <span style="font-size:11px;color:var(--muted);">Tap to load watchlist</span>
         <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" style="display:none">
       </div>
-
       <div class="toolbar">
-        <button class="btn success" id="btnSync" onclick="startGoogleAppsScriptSync()">⚡ Run 100% Google Finance Sync</button>
+        <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
         <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
-        <button class="btn soft" onclick="exportData('csv')">Export CSV</button>
-        <button class="btn soft" onclick="backup()">Backup JSON</button>
-      </div>
-
-      <div id="syncContainer" class="hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-weight:800;font-size:13px;color:#0369a1;" id="syncText">Connecting to Google Apps Script...</span>
-          <span style="font-weight:900;font-size:15px;color:#0284c7;" id="syncPercent">0%</span>
-        </div>
-        <div class="progress-bar-bg">
-          <div id="progressFill" class="progress-bar-fill"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#0284c7;">
-          <span id="syncDetails">Pending: 0 • Completed: 0</span>
-          <span class="sync-badge" id="currentBatchBadge">Idle</span>
-        </div>
-        <div class="sync-log" id="syncLog"></div>
       </div>
     </div>
 
     <div class="kpis">
       <div class="kpi"><small>Total Stocks</small><b id="n">0</b></div>
-      <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
-      <div class="kpi"><small>BUY Signals</small><b id="buy">0</b></div>
-      <div class="kpi"><small>WAIT</small><b id="wait">0</b></div>
-      <div class="kpi"><small>Missing Sync</small><b id="needSync" style="color:#b42318;">0</b></div>
+      <div class="kpi"><small>BUY Setups</small><b id="buy" style="color:#4ade80;">0</b></div>
+      <div class="kpi"><small>My Holdings</small><b id="holdCount" style="color:var(--accent);">0</b></div>
+      <div class="kpi"><small>Sell Alerts Today</small><b id="alertCount" style="color:#f87171;">0</b></div>
       <div class="kpi"><small>Top Score</small><b id="top">0</b></div>
+      <div class="kpi"><small>Telegram</small><b id="tgStatus" style="font-size:12px;color:#94a3b8;">Not Configured</b></div>
     </div>
 
     <div class="card">
       <div class="filters">
-        <input id="search" placeholder="Search by Stock or Symbol..." oninput="render()">
-        <select id="act" onchange="render()">
+        <input id="search" placeholder="Search Symbol..." oninput="renderScreener()">
+        <select id="act" onchange="renderScreener()">
           <option value="All">All Actions</option>
           <option value="BUY">BUY Only</option>
           <option value="WAIT">WAIT Only</option>
@@ -122,24 +108,91 @@ main{max-width:1050px;margin:auto;padding:12px}
       </div>
     </div>
 
-    <div id="list"></div>
+    <div id="screenerList"></div>
+  </section>
+
+  <!-- TAB 2: My Active Holdings -->
+  <section id="tab-holdings" class="hidden">
+    <div class="card">
+      <div class="row">
+        <div>
+          <h3>💼 My Open Positions (Tracking Sell Signals)</h3>
+          <small class="muted">Live SL, T1, T2 & Telegram auto-notifications</small>
+        </div>
+        <button class="btn primary" onclick="openManualAddModal()">+ Add New Position</button>
+      </div>
+    </div>
+    <div id="holdingsList"></div>
+  </section>
+
+  <!-- TAB 3: Settings & Telegram Config -->
+  <section id="tab-settings" class="hidden">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">⚙️ Telegram Alert Configuration</h3>
+      <div class="input-group">
+        <label>Telegram Bot Token (from @BotFather):</label>
+        <input id="tgToken" placeholder="e.g. 7123456789:AAHk...">
+      </div>
+      <div class="input-group">
+        <label>Your Telegram Chat ID (from @userinfobot):</label>
+        <input id="tgChatId" placeholder="e.g. 987654321">
+      </div>
+      <div class="toolbar">
+        <button class="btn success" onclick="saveTelegramSettings()">💾 Save Credentials</button>
+        <button class="btn primary" onclick="sendTestTelegramMessage()">📲 Send Test Alert</button>
+      </div>
+      <p class="muted" style="margin-top:12px;font-size:11px;">Credentials are stored locally in your browser storage only.</p>
+    </div>
   </section>
 </main>
 
-<div id="modal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modal-content"></div>
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button id="nav-screener" class="active" onclick="switchTab('screener')">📊 Screener</button>
+  <button id="nav-holdings" onclick="switchTab('holdings')">💼 My Holdings (<span id="badgeHold">0</span>)</button>
+  <button id="nav-settings" onclick="switchTab('settings')">⚙️ Settings & Alert</button>
+</nav>
+
+<!-- Add / Edit Holding Modal -->
+<div id="holdingModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('holdingModal')">
+  <div class="modal">
+    <div class="row" style="margin-bottom:12px;">
+      <h3 id="modalTitle">Add Stock to Holdings</h3>
+      <button class="btn soft" onclick="closeModal('holdingModal')">✕</button>
+    </div>
+    <div class="input-group">
+      <label>NSE Symbol:</label>
+      <input id="holdSym" uppercase>
+    </div>
+    <div class="input-group">
+      <label>Buy Price (₹):</label>
+      <input type="number" step="0.05" id="holdBuyPrice">
+    </div>
+    <div class="input-group">
+      <label>Quantity:</label>
+      <input type="number" id="holdQty" value="10">
+    </div>
+    <div class="input-group">
+      <label>Stop Loss (₹):</label>
+      <input type="number" step="0.05" id="holdSL">
+    </div>
+    <div class="input-group">
+      <label>Target 1 (₹):</label>
+      <input type="number" step="0.05" id="holdT1">
+    </div>
+    <div class="input-group">
+      <label>Target 2 (₹):</label>
+      <input type="number" step="0.05" id="holdT2">
+    </div>
+    <button class="btn success" style="width:100%;margin-top:10px;" onclick="saveHolding()">Save to Tracked Portfolio</button>
+  </div>
 </div>
 
 <script>
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwvBxHaqqAyiCTk5il2v0D6wZ42LmrSqQbca4l-dv9tNgfaZ9JOpf3QMKY1kjhCSKt8/exec";
-
-const DB='aplus_trader_db', VER=1;
-let db, ranked=[], currentStockMap = new Map();
-
-function escapeHtml(str){
-  if(!str) return '';
-  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
+const DB='aplus_trader_db', VER=2;
+let db, ranked=[], currentStockMap = new Map(), holdings = [];
+let triggeredAlertsToday = new Set();
 
 function openDB(){
   return new Promise((res,rej)=>{
@@ -147,41 +200,39 @@ function openDB(){
     r.onupgradeneeded=()=>{
       let d=r.result;
       if(!d.objectStoreNames.contains('snapshots')) d.createObjectStore('snapshots',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('holdings')) d.createObjectStore('holdings',{keyPath:'sym'});
     };
     r.onsuccess=()=>{db=r.result;res()};
     r.onerror=()=>rej(r.error);
   });
 }
-function put(x){
+function putHolding(item){
   return new Promise((res,rej)=>{
-    let t=db.transaction('snapshots','readwrite');
-    t.objectStore('snapshots').put(x);
+    let t=db.transaction('holdings','readwrite');
+    t.objectStore('holdings').put(item);
     t.oncomplete=res; t.onerror=()=>rej(t.error);
   });
 }
-function all(){
+function deleteHoldingDB(sym){
   return new Promise((res,rej)=>{
-    let t=db.transaction('snapshots','readonly'),q=t.objectStore('snapshots').getAll();
+    let t=db.transaction('holdings','readwrite');
+    t.objectStore('holdings').delete(sym);
+    t.oncomplete=res; t.onerror=()=>rej(t.error);
+  });
+}
+function getAllHoldings(){
+  return new Promise((res,rej)=>{
+    let t=db.transaction('holdings','readonly'),q=t.objectStore('holdings').getAll();
     q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
   });
 }
 
-function getNum(v){
-  if(v===undefined || v===null || v==='') return NaN;
-  let n = parseFloat(String(v).replace(/,/g,'').trim());
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function cleanKey(k){
-  return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
+function cleanKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 function normalizeRow(r){
   let norm = {};
   for(let k in r) norm[cleanKey(k)] = r[k];
   return norm;
 }
-
 function getKey(r, norm){
   const candidates = ['nsecode', 'symbol', 'nse', 'ticker', 'stockname', 'stock', 'company'];
   for(let c of candidates){
@@ -190,7 +241,11 @@ function getKey(r, norm){
   }
   return '';
 }
-
+function getNum(v){
+  if(v===undefined || v===null || v==='') return NaN;
+  let n = parseFloat(String(v).replace(/,/g,'').trim());
+  return Number.isFinite(n) ? n : NaN;
+}
 function getVal(rows, searchKeys){
   let targets = searchKeys.map(cleanKey);
   for(const r of rows){
@@ -201,430 +256,443 @@ function getVal(rows, searchKeys){
   return NaN;
 }
 
+// -------------------------------------------------------------
+// TELEGRAM AUTO-DISPATCH ENGINE
+// -------------------------------------------------------------
+async function sendTelegramAlert(message) {
+  let token = localStorage.getItem('aplus_tg_token');
+  let chatId = localStorage.getItem('aplus_tg_chat_id');
+  if(!token || !chatId) return false;
+
+  let url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    let res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+    return res.ok;
+  } catch(e) {
+    console.error("Telegram API Error:", e);
+    return false;
+  }
+}
+
+async function sendTestTelegramMessage(){
+  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Test Alert</b>\n\nTelegram integration successful! You will receive instant Auto-Sell signals here.");
+  alert(ok ? "✅ Test message sent! Check Telegram." : "❌ Failed to send. Please check your Bot Token & Chat ID.");
+}
+
+function saveTelegramSettings(){
+  let token = document.getElementById('tgToken').value.trim();
+  let chatId = document.getElementById('tgChatId').value.trim();
+  if(!token || !chatId){ alert("Both fields are required."); return; }
+  localStorage.setItem('aplus_tg_token', token);
+  localStorage.setItem('aplus_tg_chat_id', chatId);
+  updateTelegramBadge();
+  alert("Settings saved successfully!");
+}
+
+function updateTelegramBadge(){
+  let token = localStorage.getItem('aplus_tg_token');
+  let chatId = localStorage.getItem('aplus_tg_chat_id');
+  let el = document.getElementById('tgStatus');
+  if(token && chatId){
+    el.textContent = "Connected ✅";
+    el.style.color = "#4ade80";
+  } else {
+    el.textContent = "Not Configured";
+    el.style.color = "#94a3b8";
+  }
+}
+
+// -------------------------------------------------------------
+// AUTO-SELL CHECKING LOGIC
+// -------------------------------------------------------------
+async function checkAllHoldingsForSellSignals() {
+  if(!holdings.length){ alert("No open holdings to check."); return; }
+  
+  let alertsTriggered = 0;
+  for(let h of holdings){
+    let ltp = h.ltp || h.buyPrice;
+    let sym = h.sym;
+
+    // Condition 1: Hard Stop Loss Hit
+    if(ltp <= h.sl && !triggeredAlertsToday.has(`${sym}_SL`)){
+      triggeredAlertsToday.add(`${sym}_SL`);
+      alertsTriggered++;
+      let lossPct = (((ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
+      let msg = `🔴 <b>EXIT SIGNAL (STOP-LOSS HIT)</b>\n\n` +
+                `<b>Stock:</b> #${sym}\n` +
+                `<b>Trigger:</b> Stop-Loss Breached\n` +
+                `<b>LTP:</b> ₹${ltp}\n` +
+                `<b>SL Level:</b> ₹${h.sl}\n` +
+                `<b>Buy Price:</b> ₹${h.buyPrice}\n` +
+                `<b>P&L:</b> ${lossPct}%\n\n` +
+                `<i>Action: Exit complete position to preserve capital.</i>`;
+      await sendTelegramAlert(msg);
+    }
+    // Condition 2: Target 2 Achieved (Full Exit)
+    else if(ltp >= h.t2 && !triggeredAlertsToday.has(`${sym}_T2`)){
+      triggeredAlertsToday.add(`${sym}_T2`);
+      alertsTriggered++;
+      let gainPct = (((ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
+      let msg = `🎯 <b>PROFIT BOOKING (TARGET 2 HIT)</b>\n\n` +
+                `<b>Stock:</b> #${sym}\n` +
+                `<b>Trigger:</b> Full Target Achieved\n` +
+                `<b>LTP:</b> ₹${ltp}\n` +
+                `<b>Target 2:</b> ₹${h.t2}\n` +
+                `<b>Buy Price:</b> ₹${h.buyPrice}\n` +
+                `<b>Gain:</b> +${gainPct}%\n\n` +
+                `<i>Action: Book final profits & close trade.</i>`;
+      await sendTelegramAlert(msg);
+    }
+    // Condition 3: Target 1 Hit (Book 50% & Trail to Cost)
+    else if(ltp >= h.t1 && !triggeredAlertsToday.has(`${sym}_T1`)){
+      triggeredAlertsToday.add(`${sym}_T1`);
+      alertsTriggered++;
+      let gainPct = (((ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
+      let msg = `🟢 <b>TARGET 1 HIT (PARTIAL EXIT & TRAIL)</b>\n\n` +
+                `<b>Stock:</b> #${sym}\n` +
+                `<b>LTP:</b> ₹${ltp} (+${gainPct}%)\n` +
+                `<b>Target 1:</b> ₹${h.t1}\n\n` +
+                `<i>Action: Book 50% profit now. Trail remaining Stop-Loss to Breakeven (₹${h.buyPrice}).</i>`;
+      await sendTelegramAlert(msg);
+    }
+  }
+
+  document.getElementById('alertCount').textContent = triggeredAlertsToday.size;
+  renderHoldings();
+  if(alertsTriggered > 0){
+    alert(`⚡ ${alertsTriggered} Auto-Sell signals detected and dispatched to Telegram!`);
+  }
+}
+
+// -------------------------------------------------------------
+// HOLDINGS CRUD
+// -------------------------------------------------------------
+function addStockToHoldingsFromCard(sym, buyPrice, sl, t1, t2){
+  document.getElementById('modalTitle').textContent = `Add ${sym} to Holdings`;
+  document.getElementById('holdSym').value = sym;
+  document.getElementById('holdBuyPrice').value = buyPrice;
+  document.getElementById('holdSL').value = sl;
+  document.getElementById('holdT1').value = t1;
+  document.getElementById('holdT2').value = t2;
+  document.getElementById('holdingModal').classList.remove('hidden');
+}
+
+function openManualAddModal(){
+  document.getElementById('modalTitle').textContent = `Add Position to Holdings`;
+  document.getElementById('holdSym').value = '';
+  document.getElementById('holdBuyPrice').value = '';
+  document.getElementById('holdSL').value = '';
+  document.getElementById('holdT1').value = '';
+  document.getElementById('holdT2').value = '';
+  document.getElementById('holdingModal').classList.remove('hidden');
+}
+
+async function saveHolding(){
+  let sym = document.getElementById('holdSym').value.trim().toUpperCase();
+  let buyPrice = parseFloat(document.getElementById('holdBuyPrice').value);
+  let qty = parseInt(document.getElementById('holdQty').value) || 1;
+  let sl = parseFloat(document.getElementById('holdSL').value);
+  let t1 = parseFloat(document.getElementById('holdT1').value);
+  let t2 = parseFloat(document.getElementById('holdT2').value);
+
+  if(!sym || !buyPrice || !sl){ alert("Symbol, Buy Price and Stop Loss are required."); return; }
+
+  let item = {
+    sym, buyPrice, qty, sl, t1, t2,
+    ltp: buyPrice,
+    date: new Date().toLocaleDateString()
+  };
+
+  await putHolding(item);
+  holdings = await getAllHoldings();
+  closeModal('holdingModal');
+  renderHoldings();
+  document.getElementById('badgeHold').textContent = holdings.length;
+  document.getElementById('holdCount').textContent = holdings.length;
+  alert(`Added ${sym} to tracked portfolio!`);
+}
+
+async function removeHolding(sym){
+  if(confirm(`Remove ${sym} from portfolio?`)){
+    await deleteHoldingDB(sym);
+    holdings = await getAllHoldings();
+    renderHoldings();
+    document.getElementById('badgeHold').textContent = holdings.length;
+    document.getElementById('holdCount').textContent = holdings.length;
+  }
+}
+
+function renderHoldings(){
+  let el = document.getElementById('holdingsList');
+  if(!holdings.length){
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No open positions. Add from Screener or tap "+ Add New Position".</div>`;
+    return;
+  }
+
+  el.innerHTML = holdings.map(h => {
+    let pnl = ((h.ltp - h.buyPrice) * h.qty).toFixed(2);
+    let pnlPct = (((h.ltp - h.buyPrice)/h.buyPrice)*100).toFixed(2);
+    let isProfit = pnl >= 0;
+    
+    // Status check
+    let statusBadge = `<span class="tag tag-hold">TRACKING</span>`;
+    if(h.ltp <= h.sl) statusBadge = `<span class="tag tag-sell">SL BREACHED - SELL</span>`;
+    else if(h.ltp >= h.t2) statusBadge = `<span class="tag tag-buy">TARGET 2 HIT - SELL</span>`;
+    else if(h.ltp >= h.t1) statusBadge = `<span class="tag tag-buy">TARGET 1 HIT - BOOK 50%</span>`;
+
+    return `
+      <div class="item">
+        <div class="row">
+          <div>
+            <div class="stock">${h.sym} <small style="color:var(--muted)">(${h.qty} shares)</small></div>
+            <div class="muted">Bought at ₹${h.buyPrice} on ${h.date}</div>
+          </div>
+          <div style="text-align:right;">
+            <b style="font-size:16px;color:${isProfit?'#4ade80':'#f87171'};">
+              ${isProfit?'+':''}₹${pnl} (${pnlPct}%)
+            </b>
+            <div class="muted">LTP: ₹${h.ltp}</div>
+          </div>
+        </div>
+
+        <div class="tags">${statusBadge}</div>
+
+        <div class="grid">
+          <div class="metric">Stop-Loss<b>₹${h.sl}</b></div>
+          <div class="metric">Target 1<b>₹${h.t1||'-'}</b></div>
+          <div class="metric">Target 2<b>₹${h.t2||'-'}</b></div>
+          <div class="metric">Total Value<b>₹${(h.ltp*h.qty).toFixed(0)}</b></div>
+          <div class="metric">Trailing SL<b>₹${h.buyPrice}</b></div>
+          <div class="metric" style="display:flex;align-items:center;justify-content:center;">
+            <button class="btn danger" style="padding:4px 8px;font-size:10px;" onclick="removeHolding('${h.sym}')">Close / Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// -------------------------------------------------------------
+// CORE SCORER & SCREENER LOGIC
+// -------------------------------------------------------------
 function scoreStock(o){
   let rows = o.rows || [o];
   let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice', 'price']);
   let hi = getVal(rows, ['1Yr High', '52W High', '1 Year High', 'fiftyTwoWeekHigh', '1yrhigh', 'high52']);
-  let wh = getVal(rows, ['Week High', 'Weekly High']);
   let rsi = getVal(rows, ['Day RSI', 'RSI', 'RSI 14', 'dayrsi']);
-  let cci = getVal(rows, ['cci', 'CCI']);
-  let d = getVal(rows, ['Trendlyne Durability Score', 'Durability', 'durability']);
-  let m = getVal(rows, ['Trendlyne Momentum Score', 'Momentum', 'momentum']);
-  let v = getVal(rows, ['Trendlyne Valuation Score', 'Valuation', 'valuation']);
-  let dv = getVal(rows, ['Day Volume', 'Volume', 'Total Traded Quantity', 'dayvolume', 'volume']);
-  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'Avg Volume', 'monthvolumeavg']);
+  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'ema5']);
+  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'ema20', 'dayema20']);
+  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'sma50', 'daysma50']);
+  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
+  let dv = getVal(rows, ['Day Volume', 'Volume', 'dayvolume']);
+  let mv = getVal(rows, ['Month Volume Avg', '30D Avg Volume', 'monthvolumeavg']);
   let sm = getVal(rows, ['Month Change %', '1M Return']);
   let sec = getVal(rows, ['Sector Month Change %', 'Sector Return']);
-  let ni = getVal(rows, ['Nifty50 Month change %', 'Nifty Return']);
-  let e5 = getVal(rows, ['ema5', 'EMA5', 'EMA 5']);
-  let e10 = getVal(rows, ['Day EMA10', 'EMA10', 'EMA 10', 'ema5']);
-  let e20 = getVal(rows, ['Day EMA20', 'EMA20', 'EMA 20', 'ema20', 'dayema20']);
-  let s50 = getVal(rows, ['Day SMA50', 'SMA50', 'SMA 50', 'ema50', 'Day EMA50', 'daysma50']);
-  let atr = getVal(rows, ['Day ATR14', 'ATR', 'ATR14']);
-  let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
-  let support = getVal(rows, ['Support', 'Support 1', 'S1']);
-  let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
 
-  // Reliable price-based moving average approximations if missing
   if(!Number.isFinite(e20) && Number.isFinite(p)) e20 = +(p * 0.985).toFixed(2);
   if(!Number.isFinite(s50) && Number.isFinite(p)) s50 = +(p * 0.965).toFixed(2);
-  if(!Number.isFinite(rsi) && !Number.isFinite(cci) && Number.isFinite(p) && Number.isFinite(hi)) {
+  if(!Number.isFinite(rsi) && Number.isFinite(p) && Number.isFinite(hi)) {
     let proximity = ((hi - p) / hi) * 100;
     rsi = +(68 - Math.min(20, Math.max(0, proximity))).toFixed(1);
   }
 
   let pts = 0, max = 0;
-  let factors = [];
-
-  const add = (label, w, ok, available, desc) => {
-    if(available){
-      max += w;
-      if(ok) pts += w;
-      factors.push({label, weight: w, passed: ok, desc});
-    }
-  };
-
-  add('Multi-Screener Match', 20, rows.length >= 2, true, `Found in ${rows.length} file(s)`);
-  add('Price > Short EMA', 5, p > (Number.isFinite(e10) ? e10 : e5), Number.isFinite(p) && (Number.isFinite(e10) || Number.isFinite(e5)), `₹${p} > ₹${e10||e5}`);
-  add('Price > EMA20', 10, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
-  add('Price > 50MA', 10, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
-  add('Golden Alignment (20 > 50)', 10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50), `EMA20 (${e20}) > EMA50 (${s50})`);
-
+  const add = (w, ok, avail) => { if(avail){ max += w; if(ok) pts += w; } };
+  add(20, rows.length >= 2, true);
+  add(10, p > e20, Number.isFinite(p) && Number.isFinite(e20));
+  add(10, p > s50, Number.isFinite(p) && Number.isFinite(s50));
+  add(10, e20 > s50, Number.isFinite(e20) && Number.isFinite(s50));
   let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
-  add('Near 52W High (<= 5%)', 10, gap >= 0 && gap <= 5, Number.isFinite(gap), `${gap ? gap.toFixed(1) : ''}% away from 52W High`);
-  add('Sector Outperformance', 5, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
-  add('Market Outperformance', 5, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
-
-  let vr = (Number.isFinite(dv) && Number.isFinite(mv) && mv > 0) ? (dv / mv) : NaN;
-  add('Volume Surge (>= 1.5x)', 10, vr >= 1.5, Number.isFinite(vr), `${vr ? vr.toFixed(2) : ''}x monthly avg`);
-  
-  if(Number.isFinite(rsi)){
-    add('Momentum (RSI 60-75)', 10, rsi >= 60 && rsi <= 75, true, `RSI: ${rsi}`);
-  } else if(Number.isFinite(cci)){
-    add('Momentum (CCI > 100)', 10, cci >= 100, true, `CCI: ${cci}`);
-  }
-
-  add('High Durability (> 65)', 5, d > 65, Number.isFinite(d), `Durability: ${d}`);
-  add('Momentum Score (> 59)', 5, m > 59, Number.isFinite(m), `Score: ${m}`);
-  add('Valuation (> 40)', 5, v > 40, Number.isFinite(v), `Valuation: ${v}`);
+  add(10, gap >= 0 && gap <= 5, Number.isFinite(gap));
+  add(10, (dv/mv) >= 1.5, Number.isFinite(dv) && Number.isFinite(mv) && mv > 0);
+  add(10, rsi >= 60 && rsi <= 75, Number.isFinite(rsi));
+  add(10, sm > sec, Number.isFinite(sm) && Number.isFinite(sec));
 
   let score = max ? Math.min(100, (pts / max) * 100) : 50;
   let grade = score >= 80 ? 'A+' : score >= 65 ? 'A' : score >= 50 ? 'Watchlist' : 'Avoid';
+  let action = (score >= 70 && p > e20) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
 
-  let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
-  let entry = Number.isFinite(resistance) ? resistance * 1.005 : p;
-  let supportLevel = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
-  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(e20) && Number.isFinite(p) ? Math.abs(p - e20) * 0.35 : p * 0.03);
-  let stop = Number.isFinite(supportLevel) ? supportLevel - buffer : entry - buffer;
-  if (!Number.isFinite(stop) || stop <= 0 || stop >= entry) stop = entry * 0.97;
-
+  let entry = Number.isFinite(hi) && hi > p ? +(hi * 1.005).toFixed(2) : p;
+  let buffer = Number.isFinite(atr) ? atr * 0.6 : p * 0.03;
+  let stop = +(entry - buffer).toFixed(2);
   let risk = entry - stop;
-  let t1 = entry + 2 * risk;
-  let t2 = entry + 3 * risk;
-  let rr = risk > 0 ? (t1 - entry) / risk : NaN;
-
-  let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
-  let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
-
-  let missing = [];
-  if (!Number.isFinite(p)) missing.push('Price');
-  if (!Number.isFinite(hi)) missing.push('52W High');
+  let t1 = +(entry + 2 * risk).toFixed(2);
+  let t2 = +(entry + 3 * risk).toFixed(2);
 
   return {
-    stock: o.stock || o.key,
-    key: o.key,
-    price: Number.isFinite(p) ? p : '-',
-    sector: o.sector || '',
+    stock: o.stock || o.key, key: o.key, price: p||'-',
     score: +score.toFixed(1), grade, action,
-    entry: Number.isFinite(entry) ? +entry.toFixed(2) : '-',
-    stop: Number.isFinite(stop) ? +stop.toFixed(2) : '-',
-    t1: Number.isFinite(t1) ? +t1.toFixed(2) : '-',
-    t2: Number.isFinite(t2) ? +t2.toFixed(2) : '-',
-    rr: Number.isFinite(rr) ? `1:${rr.toFixed(1)}` : '-',
-    screeners: rows.length,
-    gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
-    vr: Number.isFinite(vr) ? +vr.toFixed(2) : '-',
-    rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
-    pts, max, factors, missing
+    entry, stop, t1, t2, gap: Number.isFinite(gap)?+gap.toFixed(1):'-',
+    rsi: Number.isFinite(rsi)?+rsi.toFixed(1):'-'
   };
 }
 
-function rebuildRankedFromMap(){
-  let list = [];
-  currentStockMap.forEach(stockObj => {
-    list.push(scoreStock(stockObj));
-  });
-  // Sort descending by score
-  ranked = list.sort((a,b) => b.score - a.score);
-  return ranked;
-}
-
-function addLog(msg, ok=true) {
-  const logEl = document.getElementById('syncLog');
-  const d = new Date().toLocaleTimeString();
-  const line = document.createElement('div');
-  line.style.color = ok ? '#059669' : '#dc2626';
-  line.textContent = `[${d}] ${msg}`;
-  logEl.prepend(line);
-  if (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
-}
-
-// -------------------------------------------------------------
-// SECURE LIVE SYNC (NO STOCK DROP BUG)
-// -------------------------------------------------------------
-async function startGoogleAppsScriptSync() {
-  if (currentStockMap.size === 0) {
-    alert("Pehle CSV/Excel file upload karein!");
-    return;
-  }
-
-  // Find symbols that need Price or 52W High
-  let queue = [];
-  currentStockMap.forEach((val, sym) => {
-    let p = getVal(val.rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice']);
-    let hi = getVal(val.rows, ['1Yr High', '52W High', '1 Year High', '1yrhigh']);
-    if (!Number.isFinite(p) || !Number.isFinite(hi)) {
-      queue.push(sym);
-    }
-  });
-
-  if (queue.length === 0) {
-    alert("Sabhi stocks ka price aur 52W High already complete hai!");
-    return;
-  }
-
-  const syncBox = document.getElementById('syncContainer');
-  const syncText = document.getElementById('syncText');
-  const syncPercent = document.getElementById('syncPercent');
-  const syncDetails = document.getElementById('syncDetails');
-  const badge = document.getElementById('currentBatchBadge');
-  const fill = document.getElementById('progressFill');
-  const btn = document.getElementById('btnSync');
-
-  syncBox.classList.remove('hidden');
-  btn.disabled = true;
-
-  let totalToSync = queue.length;
-  let completed = 0;
-  const CHUNK_SIZE = 8; // Small batches avoid GAS Gateway Timeouts
-
-  addLog(`Syncing ${totalToSync} stocks safely... (Existing stocks preserved)`);
-
-  while (queue.length > 0) {
-    let batch = queue.splice(0, CHUNK_SIZE);
-    let batchStr = batch.join(',');
-    badge.textContent = `Batch (${batch.length}): ${batch[0]}`;
-    syncText.textContent = `Fetching live Google Finance data for ${batch.length} stocks...`;
-
-    try {
-      let callUrl = `${GAS_ENDPOINT}?symbols=${encodeURIComponent(batchStr)}`;
-      let res = await fetch(callUrl);
-      
-      if (res.ok) {
-        let text = await res.text();
-        let dataMap = null;
-        try {
-          dataMap = JSON.parse(text);
-        } catch(e) {
-          console.warn("Raw Response was not JSON:", text);
-        }
-
-        if (dataMap && typeof dataMap === 'object') {
-          let updatedCount = 0;
-          for (let sym of batch) {
-            let item = dataMap[sym] || dataMap[sym.toUpperCase()];
-            if (item && currentStockMap.has(sym)) {
-              let stockItem = currentStockMap.get(sym);
-              let targetRow = stockItem.rows[0];
-              if (item.price && Number.isFinite(Number(item.price))) targetRow.currentprice = Number(item.price);
-              if (item.high52 && Number.isFinite(Number(item.high52))) targetRow['1yrhigh'] = Number(item.high52);
-              if (item.volume && Number.isFinite(Number(item.volume))) targetRow.dayvolume = Number(item.volume);
-              updatedCount++;
-            }
-          }
-          addLog(`✓ Batch [${batch.join(', ')}]: Updated ${updatedCount} stocks`, true);
-        } else {
-          addLog(`⚠ Server returned non-JSON for batch: Retrying fallback`, false);
-        }
-      } else {
-        addLog(`⚠ Network response status ${res.status}`, false);
-      }
-    } catch (err) {
-      addLog(`✖ Connection glitch on batch: Original data safely preserved`, false);
-    }
-
-    completed += batch.length;
-    let pct = Math.min(100, Math.round((completed / totalToSync) * 100));
-    syncPercent.textContent = `${pct}%`;
-    fill.style.width = `${pct}%`;
-    syncDetails.textContent = `Synced: ${completed}/${totalToSync} • Remaining: ${queue.length}`;
-
-    // Live update without losing single item
-    rebuildRankedFromMap();
-    render();
-
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  syncText.textContent = "✅ Google Finance Sync Finished!";
-  badge.textContent = "Complete";
-  syncPercent.textContent = "100%";
-  fill.style.width = "100%";
-  btn.disabled = false;
-
-  let snap = { id: Date.now(), date: new Date().toISOString(), results: ranked };
-  await put(snap);
-  statusEl('Stocks updated successfully • ' + new Date().toLocaleTimeString());
-}
-
-// -------------------------------------------------------------
-// FILE PARSER & SAFE MAP LOADER
-// -------------------------------------------------------------
-async function parseFile(file){
-  const ext = file.name.split('.').pop().toLowerCase();
-  const buffer = await file.arrayBuffer();
-  let workbook;
-  if(ext === 'csv'){
-    const text = new TextDecoder('utf-8').decode(buffer);
-    workbook = XLSX.read(text, { type: 'string', raw: false });
-  } else {
-    workbook = XLSX.read(buffer, { type: 'array' });
-  }
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-  
-  return jsonRows.map(row => {
-    let norm = normalizeRow(row);
-    norm._raw = row;
-    norm._screenerName = file.name.replace(/\.[^/.]+$/, "");
-    return norm;
-  });
-}
-
-function loadRowsIntoMasterMap(allRows){
-  allRows.forEach(r => {
-    let k = getKey(r._raw, r);
-    if(!k) return;
-    if(!currentStockMap.has(k)){
-      currentStockMap.set(k, {
-        key: k,
-        stock: r.stockname || r.company || r.stock || k,
-        sector: r.sector || '',
-        rows: []
-      });
-    }
-    currentStockMap.get(k).rows.push(r);
-  });
-}
-
-document.getElementById('files').addEventListener('change', async (e) => {
-  let files = Array.from(e.target.files);
-  if(!files.length) return;
-  statusEl('Reading files...');
-  
-  let allParsed = [];
-  for(const f of files){
-    try {
-      let rows = await parseFile(f);
-      if(rows.length) allParsed = allParsed.concat(rows);
-    } catch(err){}
-  }
-  if(!allParsed.length) return;
-
-  loadRowsIntoMasterMap(allParsed);
-  rebuildRankedFromMap();
-  
-  let snap = { id: Date.now(), date: new Date().toISOString(), results: ranked };
-  await put(snap);
-  render();
-
-  let need = ranked.filter(x => x.missing && x.missing.length > 0).length;
-  statusEl(`Loaded ${ranked.length} stocks (${need} need price/high sync) • Ready`);
-});
-
-function statusEl(msg){ document.getElementById('status').textContent = msg; }
-
-function render(){
-  let q = document.getElementById('search').value.toLowerCase().trim();
-  let a = document.getElementById('act').value;
+function renderScreener(){
+  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
+  let a = document.getElementById('act')?.value || 'All';
   let filtered = ranked.filter(x => {
     let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
     let matchAction = a === 'All' || x.action === a;
     return matchQuery && matchAction;
   });
 
-  let listEl = document.getElementById('list');
+  let el = document.getElementById('screenerList');
   if(!filtered.length){
-    listEl.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display.</div>`;
-  } else {
-    listEl.innerHTML = filtered.map((x, i) => `
-      <div class="item" onclick="openModal('${escapeHtml(x.key)}')">
-        <div class="row">
-          <div>
-            <div class="stock">${i+1}. ${escapeHtml(x.stock)} (${escapeHtml(x.key)})</div>
-            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + escapeHtml(x.sector) : ''} • ${x.screeners} file match</div>
-          </div>
-          <div class="score">${x.score}</div>
-        </div>
-        <div class="tags">
-          <span class="tag ${x.grade.startsWith('A')?'a':x.grade==='Watchlist'?'w':'r'}">Grade ${escapeHtml(x.grade)}</span>
-          <span class="tag ${x.action==='BUY'?'a':x.action==='WAIT'?'w':'r'}">${escapeHtml(x.action)}</span>
-          ${x.missing.length ? `<span class="tag r">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag a">100% Synced</span>`}
-        </div>
-        <div class="grid">
-          <div class="metric">Entry<b>₹${x.entry}</b></div>
-          <div class="metric">Stop<b>₹${x.stop}</b></div>
-          <div class="metric">T1<b>₹${x.t1}</b></div>
-          <div class="metric">T2<b>₹${x.t2}</b></div>
-          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
-          <div class="metric">Momentum<b>${x.rsi}</b></div>
-        </div>
-      </div>
-    `).join('');
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+    return;
   }
 
-  let needCount = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  el.innerHTML = filtered.map((x, i) => `
+    <div class="item">
+      <div class="row">
+        <div>
+          <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
+          <div class="muted">Price: ₹${x.price} • 52W Gap: ${x.gap}%</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="score">${x.score}</div>
+          <button class="btn success" onclick="addStockToHoldingsFromCard('${x.key}', ${x.price}, ${x.stop}, ${x.t1}, ${x.t2})">
+            + Add to Holdings
+          </button>
+        </div>
+      </div>
+      <div class="tags">
+        <span class="tag tag-hold">Grade ${x.grade}</span>
+        <span class="tag ${x.action==='BUY'?'tag-buy':'tag-sell'}">${x.action}</span>
+      </div>
+      <div class="grid">
+        <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
+        <div class="metric">Stop-Loss<b>₹${x.stop}</b></div>
+        <div class="metric">Target 1<b>₹${x.t1}</b></div>
+        <div class="metric">Target 2<b>₹${x.t2}</b></div>
+        <div class="metric">Momentum<b>${x.rsi}</b></div>
+        <div class="metric">Auto-Sell Track<b>Pre-configured</b></div>
+      </div>
+    </div>
+  `).join('');
+
   document.getElementById('n').textContent = ranked.length;
-  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
   document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
-  document.getElementById('wait').textContent = ranked.filter(x => x.action==='WAIT').length;
-  document.getElementById('needSync').textContent = needCount;
   document.getElementById('top').textContent = ranked[0]?.score || 0;
 }
 
-function openModal(symbol){
-  let x = ranked.find(item => item.key === symbol);
-  if(!x) return;
-  let modalContent = document.getElementById('modal-content');
-  modalContent.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h2 style="font-size:18px;">${escapeHtml(x.stock)} (${escapeHtml(x.key)})</h2>
-      <button class="btn soft" onclick="closeModal()">✕</button>
-    </div>
-    <div style="font-size:13px;margin-bottom:14px;">
-      <b>Total Score:</b> ${x.score}/100 (${x.pts} of ${x.max} points earned)
-    </div>
-    <h4 style="font-size:13px;margin-bottom:6px;">Parameters Breakdown:</h4>
-    ${x.factors.map(f => `
-      <div class="factor-row">
-        <span>${f.passed ? '✅' : '❌'} ${escapeHtml(f.label)} <small style="color:var(--muted)">(${escapeHtml(f.desc)})</small></span>
-        <b>${f.passed ? '+' + f.weight : '0'} pts</b>
-      </div>
-    `).join('')}
+// -------------------------------------------------------------
+// LIVE SYNC FOR SCREENER & HOLDINGS
+// -------------------------------------------------------------
+async function startSafeSync(){
+  let queue = [...new Set([...currentStockMap.keys(), ...holdings.map(h => h.sym)])];
+  if(!queue.length){ alert("Upload files or add holdings first!"); return; }
 
-    ${x.missing.length ? `
-      <div style="margin-top:12px;background:#fff1f3;padding:8px 10px;border-radius:8px;font-size:11px;color:#c01048;">
-        <b>Missing Critical Indicators:</b> ${escapeHtml(x.missing.join(', '))}
-        <br><span style="color:#667085;">Tap "Run 100% Google Finance Sync" to auto-fetch online.</span>
-      </div>
-    ` : `
-      <div style="margin-top:12px;background:#ecfdf3;padding:8px 10px;border-radius:8px;font-size:11px;color:#027a48;">
-        <b>✅ All parameters 100% synced!</b>
-      </div>
-    `}
-  `;
-  document.getElementById('modal').classList.remove('hidden');
+  const CHUNK = 8;
+  while(queue.length > 0){
+    let batch = queue.splice(0, CHUNK);
+    try {
+      let res = await fetch(`${GAS_ENDPOINT}?symbols=${encodeURIComponent(batch.join(','))}`);
+      if(res.ok){
+        let dataMap = await res.json();
+        if(dataMap && typeof dataMap === 'object'){
+          for(let sym of batch){
+            let item = dataMap[sym] || dataMap[sym.toUpperCase()];
+            if(item && item.price){
+              // Update Screener Map
+              if(currentStockMap.has(sym)){
+                let target = currentStockMap.get(sym).rows[0];
+                target.currentprice = Number(item.price);
+                if(item.high52) target['1yrhigh'] = Number(item.high52);
+              }
+              // Update Open Holdings LTP
+              let holdItem = holdings.find(h => h.sym === sym);
+              if(holdItem){
+                holdItem.ltp = Number(item.price);
+                await putHolding(holdItem);
+              }
+            }
+          }
+        }
+      }
+    } catch(e){}
+  }
+
+  // Refresh Screener & Check Sell Signals
+  let list = [];
+  currentStockMap.forEach(stockObj => list.push(scoreStock(stockObj)));
+  ranked = list.sort((a,b) => b.score - a.score);
+  renderScreener();
+  await checkAllHoldingsForSellSignals();
+  alert("100% Google Finance Sync Completed & Sell Rules Checked!");
 }
 
-function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+// -------------------------------------------------------------
+// NAVIGATION & MODALS
+// -------------------------------------------------------------
+function switchTab(tabId){
+  ['screener', 'holdings', 'settings'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== tabId);
+    document.getElementById('nav-' + t).classList.toggle('active', t === tabId);
+  });
+  if(tabId === 'holdings') renderHoldings();
+}
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+// File Parser
+async function parseFile(file){
+  const buffer = await file.arrayBuffer();
+  let workbook = XLSX.read(buffer, { type: 'array' });
+  return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' }).map(row => {
+    let norm = normalizeRow(row);
+    norm._raw = row;
+    return norm;
+  });
+}
+
+document.getElementById('files').addEventListener('change', async (e) => {
+  let files = Array.from(e.target.files);
+  if(!files.length) return;
+  for(const f of files){
+    let rows = await parseFile(f);
+    rows.forEach(r => {
+      let k = getKey(r._raw, r);
+      if(!k) return;
+      if(!currentStockMap.has(k)) currentStockMap.set(k, { key: k, stock: r.stockname||k, rows: [] });
+      currentStockMap.get(k).rows.push(r);
+    });
+  }
+  let list = [];
+  currentStockMap.forEach(v => list.push(scoreStock(v)));
+  ranked = list.sort((a,b) => b.score - a.score);
+  renderScreener();
+});
 
 function runDemo(){
   const demoData = [
-    { 'Stock name': 'TRENT', 'LTP': 7120, 'ema5': 7000, 'ema20': 6850, 'ema50': 6400, 'cci': 130, 'Sector': 'Retail', _screenerName: 'Demo' },
-    { 'Stock name': 'BEL', 'LTP': 315, 'ema5': 310, 'ema20': 300, 'Sector': 'Defense', _screenerName: 'Demo' }
+    { 'Stock name': 'TRENT', 'LTP': 7120, '1Yr High': 7250, 'ema20': 6850, 'ema50': 6400, 'RSI': 68 },
+    { 'Stock name': 'BEL', 'LTP': 315, '1Yr High': 340, 'ema20': 298, 'ema50': 282, 'RSI': 64 }
   ];
-  let norm = demoData.map(r => { let n = normalizeRow(r); n._raw=r; return n; });
-  loadRowsIntoMasterMap(norm);
-  rebuildRankedFromMap();
-  render();
-  statusEl('Demo data loaded successfully!');
-}
-
-function exportData(type){
-  if(!ranked.length){ alert('No stocks to export.'); return; }
-  let rows = ranked.map((x, i) => ({
-    Rank: i + 1, Stock: x.stock, NSE: x.key, Score: x.score, Grade: x.grade, Action: x.action,
-    Entry: x.entry, Stop: x.stop, Target1: x.t1, Target2: x.t2, Gap52W: x.gap, RSI: x.rsi
-  }));
-  let ws = XLSX.utils.json_to_sheet(rows);
-  let wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Ranked Stocks');
-  XLSX.writeFile(wb, 'aplus_ranked_stocks.csv');
-}
-
-async function backup(){
-  let s = await all();
-  let blob = new Blob([JSON.stringify({ version: 1, exported: new Date().toISOString(), snapshots: s }, null, 2)], { type: 'application/json' });
-  let a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `aplus_trader_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
+  demoData.forEach(r => {
+    let norm = normalizeRow(r); norm._raw = r;
+    currentStockMap.set(r['Stock name'], { key: r['Stock name'], stock: r['Stock name'], rows: [norm] });
+  });
+  let list = [];
+  currentStockMap.forEach(v => list.push(scoreStock(v)));
+  ranked = list.sort((a,b) => b.score - a.score);
+  renderScreener();
 }
 
 openDB().then(async () => {
-  let s = (await all()).sort((a,b) => b.id - a.id);
-  ranked = s[0]?.results || [];
-  render();
+  holdings = await getAllHoldings();
+  document.getElementById('badgeHold').textContent = holdings.length;
+  document.getElementById('holdCount').textContent = holdings.length;
+  updateTelegramBadge();
+  document.getElementById('tgToken').value = localStorage.getItem('aplus_tg_token') || '';
+  document.getElementById('tgChatId').value = localStorage.getItem('aplus_tg_chat_id') || '';
 });
 </script>
 </body>

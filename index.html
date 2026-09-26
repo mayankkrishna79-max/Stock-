@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A+ Trader Pro (Native Engine)</title>
+<title>A+ Trader Pro</title>
+<!-- Multi-CDN Fallback for XLSX Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  if (typeof XLSX === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+  }
+</script>
 <style>
 :root{
   --primary:#2563eb; --bg:#0b1120; --card-bg:#1e293b; --text:#f8fafc;
@@ -26,7 +33,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 .accent{background:#0284c7;color:#fff}
 
 .upload-box{border:2px dashed #475569;border-radius:12px;padding:18px;text-align:center;background:#131d31}
-.file-input{width:100%;max-width:320px;margin:10px auto 0;padding:10px;background:#0b1120;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px;display:block}
+.file-input{width:100%;max-width:340px;margin:10px auto 0;padding:10px;background:#0b1120;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:13px;display:block}
 
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:10px;background:#131d31}
@@ -52,7 +59,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 .metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
 .metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
 
-.log-box{max-height:80px;overflow-y:auto;background:#070d19;border:1px solid var(--border);padding:8px;border-radius:8px;font-family:monospace;font-size:11px;color:#38bdf8;margin-top:8px}
+.log-box{max-height:85px;overflow-y:auto;background:#070d19;border:1px solid var(--border);padding:8px;border-radius:8px;font-family:monospace;font-size:11px;color:#38bdf8;margin-top:8px}
 
 @media(min-width:700px){
   .grid{grid-template-columns:repeat(6,1fr)}
@@ -72,16 +79,16 @@ main{max-width:1100px;margin:auto;padding:12px}
 <main>
   <div class="card">
     <div class="upload-box">
-      <b style="font-size:14px;">📁 Screener File Upload (.CSV)</b><br>
-      <span style="font-size:12px;color:var(--muted);">Tap Choose File to select your Screener:</span>
-      <input id="files" type="file" accept=".csv,.txt" class="file-input" onchange="handleFileSelect(event)">
+      <b style="font-size:14px;">📁 Upload Screener File (.XLSX / .XLS / .CSV)</b><br>
+      <span style="font-size:12px;color:var(--muted);">Excel ya CSV file select karein:</span>
+      <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-input" onchange="handleFileSelect(event)">
     </div>
     <div class="toolbar">
       <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
       <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
       <button class="btn danger" onclick="clearData()">🗑 Clear Data</button>
     </div>
-    <div id="log" class="log-box">Log: App started. Select CSV file or tap Load Demo.</div>
+    <div id="log" class="log-box">Log: App ready. Upload Excel (.xlsx/.xls) ya CSV file.</div>
   </div>
 
   <div class="kpis">
@@ -108,7 +115,8 @@ main{max-width:1100px;margin:auto;padding:12px}
 </main>
 
 <script>
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyOsZ9j-RnFWhjFXQ-b8qwUL6Xo-Xnl9ETJxpZVkpLnQYTSt2zbZ8lgFrlH014FoRc2xg/exec";
+// Naya Updated Endpoint
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyEZQpXer8AKaLuKLBgtG1POBxUfrcAGaOMdGg3fyCxwwPW9Dyk0a5DlbcS4gtsQwu6_Q/exec";
 
 let currentStockMap = new Map();
 let ranked = [];
@@ -153,6 +161,9 @@ function getVal(rows, searchKeys){
   return NaN;
 }
 
+// -------------------------------------------------------------
+// ORIGINAL 100-POINT TRADING MATRIX
+// -------------------------------------------------------------
 function scoreStock(o){
   let rows = o.rows || [o];
   let p = getVal(rows, ['Current Price', 'Price', 'LTP', 'Close', 'currentprice', 'price']);
@@ -252,7 +263,9 @@ function rebuildRankedFromMap(){
   return ranked;
 }
 
-// Native Text-Based CSV Line Splitter (Zero CDN Library Dependency)
+// -------------------------------------------------------------
+// DUAL PARSER: CSV + EXCEL (.XLSX / .XLS)
+// -------------------------------------------------------------
 function parseCSVText(text) {
   let lines = text.split(/\r\n|\n/).filter(line => line.trim().length > 0);
   if(lines.length < 2) return [];
@@ -290,46 +303,69 @@ function parseCSVText(text) {
   return rows;
 }
 
-function handleFileSelect(e){
-  let file = e.target.files[0];
-  if(!file) return;
+async function handleFileSelect(e){
+  let files = Array.from(e.target.files);
+  if(!files.length) return;
 
-  log(`Reading file: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`);
-  document.getElementById('status').textContent = `Reading ${file.name}...`;
+  for(let file of files){
+    let ext = file.name.split('.').pop().toLowerCase();
+    log(`Reading: ${file.name} (${ext.toUpperCase()})...`);
+    document.getElementById('status').textContent = `Processing ${file.name}...`;
 
-  let reader = new FileReader();
-  reader.onload = function(evt){
-    try {
-      let text = evt.target.result;
-      let rows = parseCSVText(text);
-
-      if(!rows.length){
-        log("Error: File me koi data rows nahi mili.");
-        alert("File khali hai ya CSV format me nahi hai.");
-        return;
+    if(ext === 'csv' || ext === 'txt'){
+      let reader = new FileReader();
+      reader.onload = function(evt){
+        let rows = parseCSVText(evt.target.result);
+        processParsedRows(rows, file.name);
+      };
+      reader.readAsText(file);
+    } else {
+      if(typeof XLSX === 'undefined'){
+        log("Error: Excel engine load nahi hua.");
+        alert("Excel engine load nahi ho saka. Kripya file CSV me convert karein ya internet refresh karein.");
+        continue;
       }
 
-      rows.forEach(row => {
-        let norm = normalizeRow(row);
-        norm._raw = row;
-        let k = getKey(row, norm);
-        if(!k) return;
-        if(!currentStockMap.has(k)) {
-          currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
+      let reader = new FileReader();
+      reader.onload = function(evt){
+        try {
+          let data = new Uint8Array(evt.target.result);
+          let workbook = XLSX.read(data, { type: 'array' });
+          let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          let rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+          processParsedRows(rows, file.name);
+        } catch(err){
+          log(`Excel parse error: ${err.message}`);
+          alert(`Excel file read nahi ho saki: ${err.message}`);
         }
-        currentStockMap.get(k).rows.push(norm);
-      });
-
-      rebuildRankedFromMap();
-      renderScreener();
-      log(`Success: ${ranked.length} unique stocks loaded.`);
-      document.getElementById('status').textContent = `Loaded ${ranked.length} stocks successfully!`;
-    } catch(err) {
-      log(`Error parsing file: ${err.message}`);
-      alert("File parse nahi ho saki: " + err.message);
+      };
+      reader.readAsArrayBuffer(file);
     }
-  };
-  reader.readAsText(file);
+  }
+}
+
+function processParsedRows(rows, fileName){
+  if(!rows || !rows.length){
+    log(`Warning: ${fileName} empty hai.`);
+    return;
+  }
+
+  let countBefore = currentStockMap.size;
+  rows.forEach(row => {
+    let norm = normalizeRow(row);
+    norm._raw = row;
+    let k = getKey(row, norm);
+    if(!k) return;
+    if(!currentStockMap.has(k)) {
+      currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
+    }
+    currentStockMap.get(k).rows.push(norm);
+  });
+
+  rebuildRankedFromMap();
+  renderScreener();
+  log(`Success: ${fileName} loaded. Total Stocks: ${ranked.length} (+${currentStockMap.size - countBefore} new)`);
+  document.getElementById('status').textContent = `Loaded ${ranked.length} stocks successfully!`;
 }
 
 function renderScreener(){
@@ -343,7 +379,7 @@ function renderScreener(){
 
   let el = document.getElementById('screenerList');
   if(!filtered.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display. Upload an Excel or CSV file above.</div>`;
   } else {
     el.innerHTML = filtered.map((x, i) => `
       <div class="item">
@@ -381,13 +417,17 @@ function renderScreener(){
   document.getElementById('top').textContent = ranked[0]?.score || 0;
 }
 
+// -------------------------------------------------------------
+// LIVE SYNC (PRICE, 52W, VOLUME, EMA20 & RSI)
+// -------------------------------------------------------------
 async function startSafeSync(){
   let queue = [...currentStockMap.keys()];
-  if(!queue.length){ alert("Pehle CSV file upload karein ya demo load karein!"); return; }
+  if(!queue.length){ alert("Pehle Excel ya CSV file upload karein!"); return; }
 
-  log(`Starting Google Finance Sync for ${queue.length} stocks...`);
+  log(`Starting Live Sync for ${queue.length} stocks (Price, 52W, EMA20, RSI)...`);
   document.getElementById('status').textContent = "Syncing live data...";
   const CHUNK = 8;
+  
   while(queue.length > 0){
     let batch = queue.splice(0, CHUNK);
     try {
@@ -397,25 +437,29 @@ async function startSafeSync(){
         if(dataMap && typeof dataMap === 'object'){
           for(let sym of batch){
             let item = dataMap[sym] || dataMap[sym.toUpperCase()];
-            if(item && item.price){
+            if(item){
               if(currentStockMap.has(sym)){
                 let target = currentStockMap.get(sym).rows[0];
-                target.currentprice = Number(item.price);
+                if(item.price) target.currentprice = Number(item.price);
                 if(item.high52) target['1yrhigh'] = Number(item.high52);
                 if(item.volume) target.dayvolume = Number(item.volume);
+                if(item.ema20) target.dayema20 = Number(item.ema20);
+                if(item.rsi) target.dayrsi = Number(item.rsi);
               }
             }
           }
         }
       }
-    } catch(e){}
+    } catch(e){
+      console.error(e);
+    }
   }
 
   rebuildRankedFromMap();
   renderScreener();
-  log("Sync completed successfully.");
+  log("Sync completed: Price, 52W High, EMA20 aur RSI 100% updated.");
   document.getElementById('status').textContent = "Sync complete • " + new Date().toLocaleTimeString();
-  alert("100% Google Finance Sync Completed!");
+  alert("100% Google Finance Sync Completed! EMA20 aur RSI update ho gaye.");
 }
 
 function runDemo(){

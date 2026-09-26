@@ -1,9 +1,10 @@
+
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A+ Trader Pro (Buy & Sell Signals)</title>
+<title>A+ Trader Pro (Zero Crash Sell Watcher)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   if (typeof XLSX === 'undefined') {
@@ -80,15 +81,15 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Buy Screener & Auto-Sell Signal Watcher</small>
+    <small id="status">Buy & Zero-Crash Sell Signal Engine</small>
   </div>
 </header>
 
 <main>
   <div class="card">
     <div class="upload-box">
-      <b style="font-size:14px;">📁 Screener File Upload (.XLSX / .XLS / .CSV)</b><br>
-      <span style="font-size:12px;color:var(--muted);">Excel ya CSV file select karein:</span>
+      <b style="font-size:14px;">📁 Upload Screener File (.XLSX / .XLS / .CSV)</b><br>
+      <span style="font-size:12px;color:var(--muted);">File select karein:</span>
       <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-input" onchange="handleFileSelect(event)">
     </div>
     <div class="toolbar">
@@ -96,7 +97,7 @@ main{max-width:1100px;margin:auto;padding:12px}
       <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
       <button class="btn danger" onclick="clearData()">🗑 Clear Data</button>
     </div>
-    <div id="log" class="log-box">Log: App ready. Card par '+ Track Sell' dabayein buy kiye stock ko track karne ke liye.</div>
+    <div id="log" class="log-box">Log: Ready. Kisi bhi stock par '+ Track Sell' dabayein bina freeze ke.</div>
   </div>
 
   <div class="kpis">
@@ -130,17 +131,17 @@ const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyEZQpXer8AKaLuKLB
 
 let currentStockMap = new Map();
 let ranked = [];
-let trackedBuys = new Map(); // Stores bought stocks: { buyPrice, sl, t1, t2 }
+let trackedBuys = new Map();
 
-// Load saved tracked stocks
 try {
-  let saved = localStorage.getItem('aplus_tracked_buys');
+  let saved = localStorage.getItem('aplus_tracked_buys_v4');
   if(saved) trackedBuys = new Map(JSON.parse(saved));
 } catch(e){}
 
 function saveTrackedBuys(){
-  localStorage.setItem('aplus_tracked_buys', JSON.stringify([...trackedBuys.entries()]));
-  updateKPIs();
+  try {
+    localStorage.setItem('aplus_tracked_buys_v4', JSON.stringify([...trackedBuys.entries()]));
+  } catch(e){}
 }
 
 function log(msg){
@@ -269,31 +270,33 @@ function scoreStock(o){
   let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
   let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
 
-  // -------------------------------------------------------------
-  // DYNAMIC SELL SIGNAL ENGINE FOR BOUGHT POSITIONS
-  // -------------------------------------------------------------
+  // SAFE SELL SIGNAL ENGINE (No Crash on NaN / Dash)
   let sellAlert = null;
   let isTracked = trackedBuys.has(o.key);
   if(isTracked && Number.isFinite(p)){
     let buyData = trackedBuys.get(o.key);
-    let sl = buyData.sl;
-    let target1 = buyData.t1;
-    let target2 = buyData.t2;
+    let sl = Number(buyData.sl);
+    let target1 = Number(buyData.t1);
+    let target2 = Number(buyData.t2);
 
-    if(p <= sl){
-      sellAlert = { type: 'danger', title: '🔴 SELL ALERT (SL HIT)', msg: `LTP ₹${p} has breached Stop-Loss ₹${sl}. Exit immediately.` };
-    } else if(target2 && p >= target2){
-      sellAlert = { type: 'success', title: '🎯 SELL ALERT (TARGET 2 HIT)', msg: `LTP ₹${p} reached Final Target ₹${target2}. Book 100% Profit.` };
-    } else if(target1 && p >= target1){
-      sellAlert = { type: 'success', title: '🟢 BOOK 50% PROFIT (TARGET 1 HIT)', msg: `LTP ₹${p} reached Target 1 ₹${target1}. Trail SL to ₹${buyData.buyPrice}.` };
+    if(Number.isFinite(sl) && p <= sl){
+      sellAlert = { type: 'danger', title: '🔴 SELL ALERT (SL HIT)', msg: `LTP ₹${p} <= SL ₹${sl}. Exit complete position.` };
+    } else if(Number.isFinite(target2) && p >= target2){
+      sellAlert = { type: 'success', title: '🎯 SELL ALERT (TARGET 2 HIT)', msg: `LTP ₹${p} >= T2 ₹${target2}. Book full profits.` };
+    } else if(Number.isFinite(target1) && p >= target1){
+      sellAlert = { type: 'success', title: '🟢 BOOK 50% PROFIT (TARGET 1 HIT)', msg: `LTP ₹${p} >= T1 ₹${target1}. Trail remaining SL to ₹${buyData.buyPrice}.` };
     } else {
-      sellAlert = { type: 'tracking', title: '💼 POSITION ACTIVE (HOLDING)', msg: `SL: ₹${sl} | T1: ₹${target1} | Bought: ₹${buyData.buyPrice}` };
+      sellAlert = { type: 'tracking', title: '💼 POSITION TRACKED', msg: `Bought: ₹${buyData.buyPrice} | SL: ₹${sl} | T1: ₹${target1}` };
     }
   }
 
   return {
     stock: o.stock || o.key, key: o.key,
     price: Number.isFinite(p) ? p : '-',
+    rawPrice: p,
+    rawStop: stop,
+    rawT1: t1,
+    rawT2: t2,
     sector: o.sector || '',
     score: +score.toFixed(1), grade, action,
     entry, stop, t1, t2,
@@ -312,30 +315,22 @@ function rebuildRankedFromMap(){
   return ranked;
 }
 
-function updateKPIs(){
-  let sellAlerts = ranked.filter(x => x.sellAlert && x.sellAlert.type !== 'tracking').length;
-  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
+// SAFE DECOUPLED TRACKING HANDLER (Zero Quotes Collision)
+function handleTrackClick(symbol){
+  let item = ranked.find(x => x.key === symbol);
+  if(!item) return;
 
-  document.getElementById('n').textContent = ranked.length;
-  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
-  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
-  document.getElementById('trackCount').textContent = trackedBuys.size;
-  document.getElementById('sellAlertCount').textContent = sellAlerts;
-  document.getElementById('missingCount').textContent = missingTotal;
-}
-
-function toggleTrackStock(symbol, entryPrice, stopLoss, target1, target2){
   if(trackedBuys.has(symbol)){
     trackedBuys.delete(symbol);
-    log(`Removed ${symbol} from buy tracking.`);
+    log(`Removed ${symbol} from active tracking.`);
   } else {
-    let p = parseFloat(entryPrice) || 0;
-    let sl = parseFloat(stopLoss) || +(p * 0.97).toFixed(2);
-    let t1 = parseFloat(target1) || +(p * 1.05).toFixed(2);
-    let t2 = parseFloat(target2) || +(p * 1.10).toFixed(2);
+    let p = Number.isFinite(item.rawPrice) ? item.rawPrice : 0;
+    let sl = Number.isFinite(item.rawStop) ? item.rawStop : +(p * 0.97).toFixed(2);
+    let t1 = Number.isFinite(item.rawT1) ? item.rawT1 : +(p * 1.05).toFixed(2);
+    let t2 = Number.isFinite(item.rawT2) ? item.rawT2 : +(p * 1.10).toFixed(2);
 
-    trackedBuys.set(symbol, { buyPrice: p, sl, t1, t2, date: new Date().toLocaleDateString() });
-    log(`Started Sell Watch for ${symbol} @ Buy: ₹${p}, SL: ₹${sl}, T1: ₹${t1}`);
+    trackedBuys.set(symbol, { buyPrice: p, sl, t1, t2 });
+    log(`Tracking ${symbol}: Buy ₹${p}, SL ₹${sl}, T1 ₹${t1}`);
   }
   saveTrackedBuys();
   rebuildRankedFromMap();
@@ -357,52 +352,59 @@ function renderScreener(){
   let el = document.getElementById('screenerList');
   if(!filtered.length){
     el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
-    return;
+  } else {
+    el.innerHTML = filtered.map((x, i) => `
+      <div class="item" style="${x.sellAlert && x.sellAlert.type==='danger' ? 'border: 1px solid var(--danger);' : ''}">
+        <div class="row">
+          <div>
+            <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
+            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="btn ${x.isTracked ? 'danger' : 'success'}" style="padding:5px 9px;font-size:11px;" 
+              onclick="handleTrackClick('${x.key}')">
+              ${x.isTracked ? '✓ Tracking' : '+ Track Sell'}
+            </button>
+            <button class="btn primary" style="padding:5px 9px;font-size:11px;" onclick="showScoreBreakdown('${x.key}')">
+              📊 Scorecard
+            </button>
+          </div>
+        </div>
+
+        ${x.sellAlert ? `
+          <div class="alert-banner ${x.sellAlert.type==='danger'?'alert-danger':x.sellAlert.type==='success'?'alert-success':'alert-tracking'}">
+            <span>${x.sellAlert.title}</span>
+            <small style="font-weight:normal;">${x.sellAlert.msg}</small>
+          </div>
+        ` : ''}
+
+        <div class="tags">
+          <span class="tag tag-hold">Grade ${x.grade} (${x.score})</span>
+          <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
+          ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
+        </div>
+
+        <div class="grid">
+          <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
+          <div class="metric">Stop-Loss (SL)<b>₹${x.stop}</b></div>
+          <div class="metric">Target 1 (1:2)<b>₹${x.t1}</b></div>
+          <div class="metric">Target 2 (1:3)<b>₹${x.t2}</b></div>
+          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
+          <div class="metric">Momentum<b>${x.rsi}</b></div>
+        </div>
+      </div>
+    `).join('');
   }
 
-  el.innerHTML = filtered.map((x, i) => `
-    <div class="item" style="${x.sellAlert && x.sellAlert.type==='danger' ? 'border: 1px solid var(--danger);' : ''}">
-      <div class="row">
-        <div>
-          <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
-          <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <button class="btn ${x.isTracked ? 'danger' : 'success'}" style="padding:5px 9px;font-size:11px;" 
-            onclick="toggleTrackStock('${x.key}', ${x.price!=='-\'?x.price:0}, ${x.stop!=='-\'?x.stop:0}, ${x.t1!=='-\'?x.t1:0}, ${x.t2!=='-\'?x.t2:0})">
-            ${x.isTracked ? '✓ Tracking' : '+ Track Sell'}
-          </button>
-          <button class="btn primary" style="padding:5px 9px;font-size:11px;" onclick="showScoreBreakdown('${x.key}')">
-            📊 Scorecard
-          </button>
-        </div>
-      </div>
-
-      ${x.sellAlert ? `
-        <div class="alert-banner ${x.sellAlert.type==='danger'?'alert-danger':x.sellAlert.type==='success'?'alert-success':'alert-tracking'}">
-          <span>${x.sellAlert.title}</span>
-          <small style="font-weight:normal;">${x.sellAlert.msg}</small>
-        </div>
-      ` : ''}
-
-      <div class="tags">
-        <span class="tag tag-hold">Grade ${x.grade} (${x.score})</span>
-        <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
-        ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
-      </div>
-
-      <div class="grid">
-        <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
-        <div class="metric">Stop-Loss (SL)<b>₹${x.stop}</b></div>
-        <div class="metric">Target 1 (1:2)<b>₹${x.t1}</b></div>
-        <div class="metric">Target 2 (1:3)<b>₹${x.t2}</b></div>
-        <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
-        <div class="metric">Momentum<b>${x.rsi}</b></div>
-      </div>
-    </div>
-  `).join('');
-
-  updateKPIs();
+  // Safe KPI Updates
+  let sellAlerts = ranked.filter(x => x.sellAlert && x.sellAlert.type !== 'tracking').length;
+  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  document.getElementById('n').textContent = ranked.length;
+  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
+  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
+  document.getElementById('trackCount').textContent = trackedBuys.size;
+  document.getElementById('sellAlertCount').textContent = sellAlerts;
+  document.getElementById('missingCount').textContent = missingTotal;
 }
 
 // -------------------------------------------------------------
@@ -579,8 +581,7 @@ function runDemo(){
     let norm = normalizeRow(r); norm._raw = r;
     currentStockMap.set(r['Stock name'], { key: r['Stock name'], stock: r['Stock name'], rows: [norm] });
   });
-  // Sample Tracked Position for demo
-  trackedBuys.set('BEL', { buyPrice: 320, sl: 316, t1: 335, t2: 350 }); // SL will trigger alert as LTP is 315
+  trackedBuys.set('BEL', { buyPrice: 320, sl: 316, t1: 335, t2: 350 });
   rebuildRankedFromMap();
   renderScreener();
   log("Demo loaded with sample SL breach Sell Alert on BEL.");
@@ -590,7 +591,10 @@ function runDemo(){
 function clearData(){
   currentStockMap.clear();
   ranked = [];
+  trackedBuys.clear();
+  saveTrackedBuys();
   renderScreener();
+  log("Cleared all stock data.");
   document.getElementById('status').textContent = "Data cleared!";
 }
 </script>

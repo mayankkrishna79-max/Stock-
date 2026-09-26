@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A+ Trader Pro (Scorecard Breakdown)</title>
+<title>A+ Trader Pro (Telegram Sell Signals)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   if (typeof XLSX === 'undefined') {
@@ -26,7 +26,7 @@ header small{color:var(--muted);font-size:11px}
 main{max-width:1100px;margin:auto;padding:12px}
 .card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.btn{border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn{border:0;border-radius:8px;padding:9px 15px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .primary{background:var(--primary);color:#fff}.soft{background:#334155;color:#f8fafc}
 .success{background:var(--success);color:#052e16}.danger{background:#450a0a;color:#f87171}
 .accent{background:#0284c7;color:#fff}
@@ -37,7 +37,7 @@ main{max-width:1100px;margin:auto;padding:12px}
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .kpi{border:1px solid var(--border);border-radius:10px;padding:10px;background:#131d31}
 .kpi small{color:var(--muted);font-size:11px;font-weight:600}
-.kpi b{display:block;font-size:20px;color:#fff;margin-top:2px}
+.kpi b{display:block;font-size:19px;color:#fff;margin-top:2px}
 
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .filters input,.filters select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#0b1120;color:#fff;font-size:12px}
@@ -58,16 +58,25 @@ main{max-width:1100px;margin:auto;padding:12px}
 .metric{background:#0b1120;border-radius:8px;padding:8px;font-size:10px;color:var(--muted);border:1px solid #1e293b}
 .metric b{display:block;color:#f8fafc;font-size:13px;margin-top:2px}
 
+.alert-banner{padding:8px 12px;border-radius:8px;margin-top:8px;font-size:12px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.alert-danger{background:#450a0a;color:#f87171;border:1px solid #991b1b}
+.alert-success{background:#052e16;color:#4ade80;border:1px solid #166534}
+.alert-tracking{background:#1e1b4b;color:#a5b4fc;border:1px solid #4338ca}
+
 .log-box{max-height:85px;overflow-y:auto;background:#070d19;border:1px solid var(--border);padding:8px;border-radius:8px;font-family:monospace;font-size:11px;color:#38bdf8;margin-top:8px}
 
-/* Lightweight Dynamic Score Breakdown Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px}
 .modal{background:#1e293b;border:1px solid var(--border);max-width:520px;width:100%;border-radius:14px;padding:18px;color:#fff;max-height:85vh;overflow-y:auto}
 .factor-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #334155;font-size:12px}
 
+.tg-panel{background:#101a2e;border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px}
+.tg-inputs{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+.tg-inputs input{padding:8px 10px;border-radius:6px;background:#070d19;border:1px solid var(--border);color:#fff;font-size:12px}
+
 @media(min-width:700px){
   .grid{grid-template-columns:repeat(6,1fr)}
-  .kpis{grid-template-columns:repeat(5,1fr)}
+  .kpis{grid-template-columns:repeat(6,1fr)}
+  .tg-inputs{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -76,15 +85,31 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Standby • Ready for files</small>
+    <small id="status">Buy & Telegram Sell Signal Engine</small>
   </div>
 </header>
 
 <main>
+  <!-- Telegram Config Panel -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <b style="font-size:13px;">📲 Telegram Auto-Sell Alert Configuration</b>
+      <span id="tgBadge" style="font-size:11px;font-weight:800;color:#94a3b8;">Not Configured</span>
+    </div>
+    <div class="tg-inputs">
+      <input id="tgBotToken" placeholder="Bot Token (e.g. 8860975619:AAHk...)">
+      <input id="tgChatId" placeholder="Numeric Chat ID (Digits Only)">
+    </div>
+    <div class="toolbar" style="margin-top:8px;">
+      <button class="btn success" onclick="saveTelegramConfig()">💾 Save Telegram Info</button>
+      <button class="btn primary" onclick="sendTestTelegramMessage()">📲 Test Alert</button>
+    </div>
+  </div>
+
   <div class="card">
     <div class="upload-box">
       <b style="font-size:14px;">📁 Upload Screener File (.XLSX / .XLS / .CSV)</b><br>
-      <span style="font-size:12px;color:var(--muted);">Excel ya CSV file select karein:</span>
+      <span style="font-size:12px;color:var(--muted);">File select karein:</span>
       <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-input" onchange="handleFileSelect(event)">
     </div>
     <div class="toolbar">
@@ -92,15 +117,16 @@ main{max-width:1100px;margin:auto;padding:12px}
       <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
       <button class="btn danger" onclick="clearData()">🗑 Clear Data</button>
     </div>
-    <div id="log" class="log-box">Log: App ready. Tap '📊 Score Breakdown' on any card to see full points calculation.</div>
+    <div id="log" class="log-box">Log: Ready. Card par '+ Track Sell' dabayein; SL ya Target aate hi Telegram alert chala jayega.</div>
   </div>
 
   <div class="kpis">
     <div class="kpi"><small>Total Stocks</small><b id="n">0</b></div>
     <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
     <div class="kpi"><small>BUY Signals</small><b id="buy" style="color:#4ade80;">0</b></div>
-    <div class="kpi"><small>Missing Critical</small><b id="missingCount" style="color:#f87171;">0</b></div>
-    <div class="kpi"><small>Top Score</small><b id="top">0</b></div>
+    <div class="kpi"><small>Tracked Buys</small><b id="trackCount" style="color:var(--accent);">0</b></div>
+    <div class="kpi"><small>SELL Alerts</small><b id="sellAlertCount" style="color:#f87171;">0</b></div>
+    <div class="kpi"><small>Missing Data</small><b id="missingCount" style="color:#fde047;">0</b></div>
   </div>
 
   <div class="card">
@@ -109,8 +135,8 @@ main{max-width:1100px;margin:auto;padding:12px}
       <select id="act" onchange="renderScreener()">
         <option value="All">All Actions</option>
         <option value="BUY">BUY Only</option>
-        <option value="WAIT">WAIT Only</option>
-        <option value="AVOID">AVOID Only</option>
+        <option value="TRACKED">Tracked Positions Only</option>
+        <option value="SELL_ALERT">Active Sell Alerts Only</option>
       </select>
     </div>
   </div>
@@ -125,6 +151,78 @@ const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyEZQpXer8AKaLuKLB
 
 let currentStockMap = new Map();
 let ranked = [];
+let trackedBuys = new Map();
+let triggeredAlerts = new Set(); // Prevent spamming duplicate alerts
+
+try {
+  let saved = localStorage.getItem('aplus_tracked_buys_v4');
+  if(saved) trackedBuys = new Map(JSON.parse(saved));
+} catch(e){}
+
+function saveTrackedBuys(){
+  try {
+    localStorage.setItem('aplus_tracked_buys_v4', JSON.stringify([...trackedBuys.entries()]));
+  } catch(e){}
+}
+
+// -------------------------------------------------------------
+// TELEGRAM ALERT ENGINE
+// -------------------------------------------------------------
+function saveTelegramConfig(){
+  let token = document.getElementById('tgBotToken').value.trim();
+  let chatId = document.getElementById('tgChatId').value.trim();
+  if(!token || !chatId){ alert("Token aur Chat ID dono enter karein."); return; }
+  
+  localStorage.setItem('aplus_tg_token', token);
+  localStorage.setItem('aplus_tg_chat_id', chatId);
+  updateTelegramBadge();
+  log("Telegram credentials saved.");
+  alert("Credentials successfully saved!");
+}
+
+function updateTelegramBadge(){
+  let token = localStorage.getItem('aplus_tg_token');
+  let chatId = localStorage.getItem('aplus_tg_chat_id');
+  let badge = document.getElementById('tgBadge');
+  if(token && chatId){
+    badge.textContent = "Connected ✅";
+    badge.style.color = "#4ade80";
+  } else {
+    badge.textContent = "Not Configured";
+    badge.style.color = "#94a3b8";
+  }
+}
+
+async function sendTelegramAlert(messageHtml){
+  let token = localStorage.getItem('aplus_tg_token');
+  let chatId = localStorage.getItem('aplus_tg_chat_id');
+  if(!token || !chatId) return false;
+
+  let url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    let res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: messageHtml,
+        parse_mode: 'HTML'
+      })
+    });
+    return res.ok;
+  } catch(e){
+    return false;
+  }
+}
+
+async function sendTestTelegramMessage(){
+  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Live Test</b>\n\nTelegram integration successful! You will receive auto-sell signals here.");
+  if(ok){
+    alert("✅ Test alert sent to Telegram!");
+  } else {
+    alert("❌ Message nahi gaya. Bot token ya numeric Chat ID re-check karein.");
+  }
+}
 
 function log(msg){
   let el = document.getElementById('log');
@@ -167,7 +265,7 @@ function getVal(rows, searchKeys){
 }
 
 // -------------------------------------------------------------
-// ORIGINAL 100-POINT SCORER WITH EXACT POINT AUDIT TRACKER
+// ORIGINAL 100-POINT SCORING + SELL TRIGGER ENGINE
 // -------------------------------------------------------------
 function scoreStock(o){
   let rows = o.rows || [o];
@@ -255,16 +353,41 @@ function scoreStock(o){
   let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
   let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
 
+  // DYNAMIC SELL SIGNAL ENGINE
+  let sellAlert = null;
+  let isTracked = trackedBuys.has(o.key);
+  if(isTracked && Number.isFinite(p)){
+    let buyData = trackedBuys.get(o.key);
+    let sl = Number(buyData.sl);
+    let target1 = Number(buyData.t1);
+    let target2 = Number(buyData.t2);
+
+    if(Number.isFinite(sl) && p <= sl){
+      sellAlert = { type: 'danger', code: 'SL', title: '🔴 SELL ALERT (SL HIT)', msg: `LTP ₹${p} <= SL ₹${sl}. Exit complete position.` };
+    } else if(Number.isFinite(target2) && p >= target2){
+      sellAlert = { type: 'success', code: 'T2', title: '🎯 SELL ALERT (TARGET 2 HIT)', msg: `LTP ₹${p} >= T2 ₹${target2}. Book full profits.` };
+    } else if(Number.isFinite(target1) && p >= target1){
+      sellAlert = { type: 'success', code: 'T1', title: '🟢 BOOK 50% PROFIT (TARGET 1 HIT)', msg: `LTP ₹${p} >= T1 ₹${target1}. Trail remaining SL to ₹${buyData.buyPrice}.` };
+    } else {
+      sellAlert = { type: 'tracking', code: 'HOLD', title: '💼 POSITION TRACKED', msg: `Bought: ₹${buyData.buyPrice} | SL: ₹${sl} | T1: ₹${target1}` };
+    }
+  }
+
   return {
     stock: o.stock || o.key, key: o.key,
     price: Number.isFinite(p) ? p : '-',
+    rawPrice: p,
+    rawStop: stop,
+    rawT1: t1,
+    rawT2: t2,
     sector: o.sector || '',
     score: +score.toFixed(1), grade, action,
     entry, stop, t1, t2,
     screeners: rows.length,
     gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
     rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
-    missing, breakdown, pts, max
+    missing, breakdown, pts, max,
+    isTracked, sellAlert
   };
 }
 
@@ -276,26 +399,144 @@ function rebuildRankedFromMap(){
 }
 
 // -------------------------------------------------------------
-// DUAL PARSER (CSV + EXCEL)
+// DISPATCH TELEGRAM SIGNALS FOR ACTIVE POSITIONS
+// -------------------------------------------------------------
+async function dispatchTelegramAlerts(){
+  let count = 0;
+  for(let x of ranked){
+    if(x.sellAlert && (x.sellAlert.code === 'SL' || x.sellAlert.code === 'T1' || x.sellAlert.code === 'T2')){
+      let alertKey = `${x.key}_${x.sellAlert.code}`;
+      if(!triggeredAlerts.has(alertKey)){
+        triggeredAlerts.add(alertKey);
+        count++;
+
+        let pnlText = '';
+        if(trackedBuys.has(x.key)){
+          let b = trackedBuys.get(x.key);
+          let pnlPct = (((x.rawPrice - b.buyPrice)/b.buyPrice)*100).toFixed(2);
+          pnlText = `\n<b>Bought @:</b> ₹${b.buyPrice}\n<b>P&L:</b> ${pnlPct}%`;
+        }
+
+        let msg = `🚨 <b>${x.sellAlert.title}</b>\n\n` +
+                  `<b>Stock:</b> #${x.key} (${x.stock})\n` +
+                  `<b>LTP:</b> ₹${x.rawPrice}${pnlText}\n` +
+                  `<b>Trigger Note:</b> ${x.sellAlert.msg}\n\n` +
+                  `<i>Time: ${new Date().toLocaleTimeString()}</i>`;
+
+        await sendTelegramAlert(msg);
+      }
+    }
+  }
+  if(count > 0){
+    log(`Dispatched ${count} sell/profit alert(s) to Telegram!`);
+  }
+}
+
+// SAFE TRACKING HANDLER
+function handleTrackClick(symbol){
+  let item = ranked.find(x => x.key === symbol);
+  if(!item) return;
+
+  if(trackedBuys.has(symbol)){
+    trackedBuys.delete(symbol);
+    log(`Removed ${symbol} from active tracking.`);
+  } else {
+    let p = Number.isFinite(item.rawPrice) ? item.rawPrice : 0;
+    let sl = Number.isFinite(item.rawStop) ? item.rawStop : +(p * 0.97).toFixed(2);
+    let t1 = Number.isFinite(item.rawT1) ? item.rawT1 : +(p * 1.05).toFixed(2);
+    let t2 = Number.isFinite(item.rawT2) ? item.rawT2 : +(p * 1.10).toFixed(2);
+
+    trackedBuys.set(symbol, { buyPrice: p, sl, t1, t2 });
+    log(`Tracking ${symbol}: Buy ₹${p}, SL ₹${sl}, T1 ₹${t1}`);
+  }
+  saveTrackedBuys();
+  rebuildRankedFromMap();
+  renderScreener();
+}
+
+function renderScreener(){
+  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
+  let a = document.getElementById('act')?.value || 'All';
+  let filtered = ranked.filter(x => {
+    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
+    let matchAction = true;
+    if(a === 'BUY') matchAction = x.action === 'BUY';
+    else if(a === 'TRACKED') matchAction = x.isTracked;
+    else if(a === 'SELL_ALERT') matchAction = x.sellAlert && x.sellAlert.type !== 'tracking';
+    return matchQuery && matchAction;
+  });
+
+  let el = document.getElementById('screenerList');
+  if(!filtered.length){
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
+  } else {
+    el.innerHTML = filtered.map((x, i) => `
+      <div class="item" style="${x.sellAlert && x.sellAlert.type==='danger' ? 'border: 1px solid var(--danger);' : ''}">
+        <div class="row">
+          <div>
+            <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
+            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="btn ${x.isTracked ? 'danger' : 'success'}" style="padding:5px 9px;font-size:11px;" 
+              onclick="handleTrackClick('${x.key}')">
+              ${x.isTracked ? '✓ Tracking' : '+ Track Sell'}
+            </button>
+            <button class="btn primary" style="padding:5px 9px;font-size:11px;" onclick="showScoreBreakdown('${x.key}')">
+              📊 Scorecard
+            </button>
+          </div>
+        </div>
+
+        ${x.sellAlert ? `
+          <div class="alert-banner ${x.sellAlert.type==='danger'?'alert-danger':x.sellAlert.type==='success'?'alert-success':'alert-tracking'}">
+            <span>${x.sellAlert.title}</span>
+            <small style="font-weight:normal;">${x.sellAlert.msg}</small>
+          </div>
+        ` : ''}
+
+        <div class="tags">
+          <span class="tag tag-hold">Grade ${x.grade} (${x.score})</span>
+          <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
+          ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
+        </div>
+
+        <div class="grid">
+          <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
+          <div class="metric">Stop-Loss (SL)<b>₹${x.stop}</b></div>
+          <div class="metric">Target 1 (1:2)<b>₹${x.t1}</b></div>
+          <div class="metric">Target 2 (1:3)<b>₹${x.t2}</b></div>
+          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
+          <div class="metric">Momentum<b>${x.rsi}</b></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let sellAlerts = ranked.filter(x => x.sellAlert && x.sellAlert.type !== 'tracking').length;
+  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
+  document.getElementById('n').textContent = ranked.length;
+  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
+  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
+  document.getElementById('trackCount').textContent = trackedBuys.size;
+  document.getElementById('sellAlertCount').textContent = sellAlerts;
+  document.getElementById('missingCount').textContent = missingTotal;
+}
+
+// -------------------------------------------------------------
+// DUAL PARSER & SYNC ENGINE
 // -------------------------------------------------------------
 function parseCSVText(text) {
   let lines = text.split(/\r\n|\n/).filter(line => line.trim().length > 0);
   if(lines.length < 2) return [];
 
   function splitLine(line) {
-    let result = [];
-    let insideQuotes = false;
-    let entry = '';
+    let result = [], insideQuotes = false, entry = '';
     for (let i = 0; i < line.length; i++) {
       let char = line[i];
-      if (char === '"') {
-        insideQuotes = !insideQuotes;
-      } else if (char === ',' && !insideQuotes) {
-        result.push(entry.trim());
-        entry = '';
-      } else {
-        entry += char;
-      }
+      if (char === '"') insideQuotes = !insideQuotes;
+      else if (char === ',' && !insideQuotes) { result.push(entry.trim()); entry = ''; }
+      else entry += char;
     }
     result.push(entry.trim());
     return result;
@@ -303,13 +544,10 @@ function parseCSVText(text) {
 
   let headers = splitLine(lines[0]).map(h => h.replace(/^["']|["']$/g, ''));
   let rows = [];
-
   for (let i = 1; i < lines.length; i++) {
     let values = splitLine(lines[i]).map(v => v.replace(/^["']|["']$/g, ''));
     let row = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] || '';
-    });
+    headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
     rows.push(row);
   }
   return rows;
@@ -321,35 +559,23 @@ async function handleFileSelect(e){
 
   for(let file of files){
     let ext = file.name.split('.').pop().toLowerCase();
-    log(`Reading: ${file.name} (${ext.toUpperCase()})...`);
+    log(`Reading: ${file.name}...`);
     document.getElementById('status').textContent = `Processing ${file.name}...`;
 
     if(ext === 'csv' || ext === 'txt'){
       let reader = new FileReader();
-      reader.onload = function(evt){
-        let rows = parseCSVText(evt.target.result);
-        processParsedRows(rows, file.name);
-      };
+      reader.onload = function(evt){ processParsedRows(parseCSVText(evt.target.result), file.name); };
       reader.readAsText(file);
     } else {
-      if(typeof XLSX === 'undefined'){
-        log("Error: Excel engine load nahi hua.");
-        alert("Excel engine load nahi ho saka. Kripya CSV use karein.");
-        continue;
-      }
-
+      if(typeof XLSX === 'undefined'){ alert("Excel engine error. CSV use karein."); continue; }
       let reader = new FileReader();
       reader.onload = function(evt){
         try {
           let data = new Uint8Array(evt.target.result);
           let workbook = XLSX.read(data, { type: 'array' });
-          let firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          let rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+          let rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
           processParsedRows(rows, file.name);
-        } catch(err){
-          log(`Excel parse error: ${err.message}`);
-          alert(`Excel file error: ${err.message}`);
-        }
+        } catch(err){ alert(`Excel read error: ${err.message}`); }
       };
       reader.readAsArrayBuffer(file);
     }
@@ -357,156 +583,26 @@ async function handleFileSelect(e){
 }
 
 function processParsedRows(rows, fileName){
-  if(!rows || !rows.length){
-    log(`Warning: ${fileName} empty hai.`);
-    return;
-  }
-
-  let countBefore = currentStockMap.size;
+  if(!rows || !rows.length) return;
   rows.forEach(row => {
     let norm = normalizeRow(row);
     norm._raw = row;
     let k = getKey(row, norm);
     if(!k) return;
-    if(!currentStockMap.has(k)) {
-      currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
-    }
+    if(!currentStockMap.has(k)) currentStockMap.set(k, { key: k, stock: row.stockname || row.stock || row.company || k, rows: [] });
     currentStockMap.get(k).rows.push(norm);
   });
-
   rebuildRankedFromMap();
   renderScreener();
-  log(`Success: ${fileName} loaded. Total Stocks: ${ranked.length} (+${currentStockMap.size - countBefore} new)`);
-  document.getElementById('status').textContent = `Loaded ${ranked.length} stocks successfully!`;
+  log(`Loaded ${fileName}. Total: ${ranked.length} stocks.`);
+  document.getElementById('status').textContent = `Loaded ${ranked.length} stocks!`;
 }
 
-function renderScreener(){
-  let q = (document.getElementById('search')?.value || '').toLowerCase().trim();
-  let a = document.getElementById('act')?.value || 'All';
-  let filtered = ranked.filter(x => {
-    let matchQuery = (x.stock || '').toLowerCase().includes(q) || (x.key || '').toLowerCase().includes(q);
-    let matchAction = a === 'All' || x.action === a;
-    return matchQuery && matchAction;
-  });
-
-  let el = document.getElementById('screenerList');
-  if(!filtered.length){
-    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks to display. Upload an Excel or CSV file above.</div>`;
-  } else {
-    el.innerHTML = filtered.map((x, i) => `
-      <div class="item">
-        <div class="row">
-          <div>
-            <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
-            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="score">${x.score}</div>
-            <button class="btn primary" style="padding:5px 9px;font-size:11px;" onclick="showScoreBreakdown('${x.key}')">
-              📊 Scorecard
-            </button>
-          </div>
-        </div>
-
-        <div class="tags">
-          <span class="tag tag-hold">Grade ${x.grade}</span>
-          <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
-          ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
-        </div>
-
-        <div class="grid">
-          <div class="metric">Breakout Entry<b>₹${x.entry}</b></div>
-          <div class="metric">Stop-Loss<b>₹${x.stop}</b></div>
-          <div class="metric">Target 1<b>₹${x.t1}</b></div>
-          <div class="metric">Target 2<b>₹${x.t2}</b></div>
-          <div class="metric">52W Gap<b>${x.gap}${x.gap!=='-'?'%':''}</b></div>
-          <div class="metric">Momentum<b>${x.rsi}</b></div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  let missingTotal = ranked.filter(x => x.missing && x.missing.length > 0).length;
-  document.getElementById('n').textContent = ranked.length;
-  document.getElementById('ap').textContent = ranked.filter(x => x.grade==='A+').length;
-  document.getElementById('buy').textContent = ranked.filter(x => x.action==='BUY').length;
-  document.getElementById('missingCount').textContent = missingTotal;
-  document.getElementById('top').textContent = ranked[0]?.score || 0;
-}
-
-// -------------------------------------------------------------
-// MODAL: DETAILED POINTS BREAKDOWN AUDIT
-// -------------------------------------------------------------
-function showScoreBreakdown(symbol){
-  let x = ranked.find(item => item.key === symbol);
-  if(!x) return;
-
-  let container = document.getElementById('modalContainer');
-  container.innerHTML = `
-    <div class="modal-overlay" onclick="closeBreakdownModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div>
-            <h2 style="font-size:18px;">${x.stock} (${x.key})</h2>
-            <small style="color:var(--muted)">100-Point Strategy Scorecard</small>
-          </div>
-          <button class="btn soft" onclick="closeBreakdownModal()">✕</button>
-        </div>
-
-        <div style="background:#0b1120;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <span style="font-size:11px;color:var(--muted);display:block;">Final Score</span>
-            <b style="font-size:24px;color:var(--accent);">${x.score} / 100</b>
-          </div>
-          <div style="text-align:right;">
-            <span style="font-size:11px;color:var(--muted);display:block;">Earned Points</span>
-            <b style="font-size:16px;color:#fff;">${x.pts} of ${x.max} pts</b>
-          </div>
-        </div>
-
-        <h4 style="font-size:12px;color:var(--muted);margin-bottom:8px;">Factor-by-Factor Points Weightage:</h4>
-        ${x.breakdown.map(f => `
-          <div class="factor-row">
-            <div>
-              <b style="color:${f.passed ? '#4ade80' : '#94a3b8'};">${f.passed ? '✓' : '✗'} ${f.label}</b>
-              <small style="display:block;color:var(--muted);font-size:10px;">${f.info}</small>
-            </div>
-            <div style="text-align:right;">
-              <span style="font-weight:800;font-size:13px;color:${f.passed ? '#4ade80' : '#f87171'};">
-                ${f.passed ? '+' + f.weight : '0'} pts
-              </span>
-              <small style="display:block;color:#64748b;font-size:9px;">(Max: ${f.weight})</small>
-            </div>
-          </div>
-        `).join('')}
-
-        ${x.missing.length ? `
-          <div style="margin-top:12px;background:#450a0a;padding:8px 10px;border-radius:8px;font-size:11px;color:#f87171;">
-            <b>Missing Data:</b> ${x.missing.join(', ')}<br>
-            <span style="color:#94a3b8;">Google Finance Sync run karein inhein auto-fill karne ke liye.</span>
-          </div>
-        ` : `
-          <div style="margin-top:12px;background:#052e16;padding:8px 10px;border-radius:8px;font-size:11px;color:#4ade80;">
-            ✓ All required indicators 100% available!
-          </div>
-        `}
-      </div>
-    </div>
-  `;
-}
-
-function closeBreakdownModal(){
-  document.getElementById('modalContainer').innerHTML = '';
-}
-
-// -------------------------------------------------------------
-// LIVE SYNC (PRICE, 52W, VOLUME, EMA20 & RSI)
-// -------------------------------------------------------------
 async function startSafeSync(){
-  let queue = [...currentStockMap.keys()];
+  let queue = [...new Set([...currentStockMap.keys(), ...trackedBuys.keys()])];
   if(!queue.length){ alert("Pehle Excel ya CSV file upload karein!"); return; }
 
-  log(`Starting Live Sync for ${queue.length} stocks (Price, 52W, EMA20, RSI)...`);
+  log(`Live Syncing ${queue.length} stocks for latest price, EMA, RSI, SL/Target breaches...`);
   document.getElementById('status').textContent = "Syncing live data...";
   const CHUNK = 8;
   
@@ -532,20 +628,67 @@ async function startSafeSync(){
           }
         }
       }
-    } catch(e){
-      console.error(e);
-    }
+    } catch(e){}
   }
 
   rebuildRankedFromMap();
   renderScreener();
-  log("Sync completed: Price, 52W High, EMA20 aur RSI 100% updated.");
+  await dispatchTelegramAlerts(); // Send alerts to Telegram if triggered
+  log("Sync completed. Prices, Indicators & Sell alerts updated.");
   document.getElementById('status').textContent = "Sync complete • " + new Date().toLocaleTimeString();
-  alert("100% Google Finance Sync Completed! EMA20 aur RSI update ho gaye.");
+  alert("100% Google Finance Sync Completed! Sell Alerts evaluated and sent to Telegram.");
 }
 
+function showScoreBreakdown(symbol){
+  let x = ranked.find(item => item.key === symbol);
+  if(!x) return;
+
+  let container = document.getElementById('modalContainer');
+  container.innerHTML = `
+    <div class="modal-overlay" onclick="closeBreakdownModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <h2 style="font-size:18px;">${x.stock} (${x.key})</h2>
+            <small style="color:var(--muted)">100-Point Strategy Scorecard</small>
+          </div>
+          <button class="btn soft" onclick="closeBreakdownModal()">✕</button>
+        </div>
+
+        <div style="background:#0b1120;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <span style="font-size:11px;color:var(--muted);display:block;">Score</span>
+            <b style="font-size:24px;color:var(--accent);">${x.score} / 100</b>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:11px;color:var(--muted);display:block;">Points Earned</span>
+            <b style="font-size:16px;color:#fff;">${x.pts} of ${x.max} pts</b>
+          </div>
+        </div>
+
+        <h4 style="font-size:12px;color:var(--muted);margin-bottom:8px;">Rules & Point Weightage:</h4>
+        ${x.breakdown.map(f => `
+          <div class="factor-row">
+            <div>
+              <b style="color:${f.passed ? '#4ade80' : '#94a3b8'};">${f.passed ? '✓' : '✗'} ${f.label}</b>
+              <small style="display:block;color:var(--muted);font-size:10px;">${f.info}</small>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-weight:800;font-size:13px;color:${f.passed ? '#4ade80' : '#f87171'};">
+                ${f.passed ? '+' + f.weight : '0'} pts
+              </span>
+              <small style="display:block;color:#64748b;font-size:9px;">(Max: ${f.weight})</small>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function closeBreakdownModal(){ document.getElementById('modalContainer').innerHTML = ''; }
+
 function runDemo(){
-  log("Loading demo data...");
   const demoData = [
     { 'Stock name': 'TRENT', 'LTP': 7120, '1Yr High': 7250, 'ema20': 6850, 'ema50': 6400, 'RSI': 68, 'Volume': 1500000, 'Month Volume Avg': 900000 },
     { 'Stock name': 'BEL', 'LTP': 315, '1Yr High': 340, 'ema20': 298, 'ema50': 282, 'RSI': 64, 'Volume': 5000000, 'Month Volume Avg': 4000000 },
@@ -555,19 +698,31 @@ function runDemo(){
     let norm = normalizeRow(r); norm._raw = r;
     currentStockMap.set(r['Stock name'], { key: r['Stock name'], stock: r['Stock name'], rows: [norm] });
   });
+  trackedBuys.set('BEL', { buyPrice: 320, sl: 316, t1: 335, t2: 350 });
   rebuildRankedFromMap();
   renderScreener();
-  log("Demo loaded with 3 sample stocks.");
+  log("Demo loaded with sample SL breach Sell Alert on BEL.");
   document.getElementById('status').textContent = "Demo loaded!";
 }
 
 function clearData(){
   currentStockMap.clear();
   ranked = [];
+  trackedBuys.clear();
+  saveTrackedBuys();
   renderScreener();
   log("Cleared all stock data.");
   document.getElementById('status').textContent = "Data cleared!";
 }
+
+// Init Telegram settings on startup
+document.addEventListener('DOMContentLoaded', () => {
+  updateTelegramBadge();
+  let t = localStorage.getItem('aplus_tg_token');
+  let c = localStorage.getItem('aplus_tg_chat_id');
+  if(t) document.getElementById('tgBotToken').value = t;
+  if(c) document.getElementById('tgChatId').value = c;
+});
 </script>
 </body>
 </html>

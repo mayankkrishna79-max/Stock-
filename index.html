@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A+ Trader Pro (Telegram Sell Signals)</title>
+<title>A+ Trader Pro (VCP & Risk-Clamped)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   if (typeof XLSX === 'undefined') {
@@ -69,7 +69,6 @@ main{max-width:1100px;margin:auto;padding:12px}
 .modal{background:#1e293b;border:1px solid var(--border);max-width:520px;width:100%;border-radius:14px;padding:18px;color:#fff;max-height:85vh;overflow-y:auto}
 .factor-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #334155;font-size:12px}
 
-.tg-panel{background:#101a2e;border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px}
 .tg-inputs{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
 .tg-inputs input{padding:8px 10px;border-radius:6px;background:#070d19;border:1px solid var(--border);color:#fff;font-size:12px}
 
@@ -85,15 +84,15 @@ main{max-width:1100px;margin:auto;padding:12px}
 <header>
   <div>
     <h1>🔥 A+ Trader Pro</h1>
-    <small id="status">Buy & Telegram Sell Signal Engine</small>
+    <small id="status">VCP & Risk-Clamped Swing Screener</small>
   </div>
 </header>
 
 <main>
-  <!-- Telegram Config Panel -->
+  <!-- Telegram Config -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <b style="font-size:13px;">📲 Telegram Auto-Sell Alert Configuration</b>
+      <b style="font-size:13px;">📲 Telegram Sell Signals Integration</b>
       <span id="tgBadge" style="font-size:11px;font-weight:800;color:#94a3b8;">Not Configured</span>
     </div>
     <div class="tg-inputs">
@@ -101,7 +100,7 @@ main{max-width:1100px;margin:auto;padding:12px}
       <input id="tgChatId" placeholder="Numeric Chat ID (Digits Only)">
     </div>
     <div class="toolbar" style="margin-top:8px;">
-      <button class="btn success" onclick="saveTelegramConfig()">💾 Save Telegram Info</button>
+      <button class="btn success" onclick="saveTelegramConfig()">💾 Save Settings</button>
       <button class="btn primary" onclick="sendTestTelegramMessage()">📲 Test Alert</button>
     </div>
   </div>
@@ -109,31 +108,31 @@ main{max-width:1100px;margin:auto;padding:12px}
   <div class="card">
     <div class="upload-box">
       <b style="font-size:14px;">📁 Upload Screener File (.XLSX / .XLS / .CSV)</b><br>
-      <span style="font-size:12px;color:var(--muted);">File select karein:</span>
+      <span style="font-size:12px;color:var(--muted);">Upload stocks to rank by Buy Qualification:</span>
       <input id="files" type="file" multiple accept=".xlsx,.xls,.csv" class="file-input" onchange="handleFileSelect(event)">
     </div>
     <div class="toolbar">
-      <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync</button>
+      <button class="btn success" onclick="startSafeSync()">⚡ 100% Google Finance Sync (Auto Re-Rank)</button>
       <button class="btn primary" onclick="runDemo()">⚡ Load Demo</button>
       <button class="btn danger" onclick="clearData()">🗑 Clear Data</button>
     </div>
-    <div id="log" class="log-box">Log: Ready. Card par '+ Track Sell' dabayein; SL ya Target aate hi Telegram alert chala jayega.</div>
+    <div id="log" class="log-box">Log: Priority Sorter Active with Volatility Contraction & Clamped Stops.</div>
   </div>
 
   <div class="kpis">
     <div class="kpi"><small>Total Stocks</small><b id="n">0</b></div>
-    <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
     <div class="kpi"><small>BUY Signals</small><b id="buy" style="color:#4ade80;">0</b></div>
-    <div class="kpi"><small>Tracked Buys</small><b id="trackCount" style="color:var(--accent);">0</b></div>
+    <div class="kpi"><small>Grade A+</small><b id="ap">0</b></div>
+    <div class="kpi"><small>Tracked Positions</small><b id="trackCount" style="color:var(--accent);">0</b></div>
     <div class="kpi"><small>SELL Alerts</small><b id="sellAlertCount" style="color:#f87171;">0</b></div>
-    <div class="kpi"><small>Missing Data</small><b id="missingCount" style="color:#fde047;">0</b></div>
+    <div class="kpi"><small>Missing Indicators</small><b id="missingCount" style="color:#fde047;">0</b></div>
   </div>
 
   <div class="card">
     <div class="filters">
       <input id="search" placeholder="Search by Stock or Symbol..." oninput="renderScreener()">
       <select id="act" onchange="renderScreener()">
-        <option value="All">All Actions</option>
+        <option value="All">All Actions (BUYs Top)</option>
         <option value="BUY">BUY Only</option>
         <option value="TRACKED">Tracked Positions Only</option>
         <option value="SELL_ALERT">Active Sell Alerts Only</option>
@@ -152,7 +151,7 @@ const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyEZQpXer8AKaLuKLB
 let currentStockMap = new Map();
 let ranked = [];
 let trackedBuys = new Map();
-let triggeredAlerts = new Set(); // Prevent spamming duplicate alerts
+let triggeredAlerts = new Set();
 
 try {
   let saved = localStorage.getItem('aplus_tracked_buys_v4');
@@ -165,13 +164,10 @@ function saveTrackedBuys(){
   } catch(e){}
 }
 
-// -------------------------------------------------------------
-// TELEGRAM ALERT ENGINE
-// -------------------------------------------------------------
 function saveTelegramConfig(){
   let token = document.getElementById('tgBotToken').value.trim();
   let chatId = document.getElementById('tgChatId').value.trim();
-  if(!token || !chatId){ alert("Token aur Chat ID dono enter karein."); return; }
+  if(!token || !chatId){ alert("Please enter both Bot Token and Chat ID."); return; }
   
   localStorage.setItem('aplus_tg_token', token);
   localStorage.setItem('aplus_tg_chat_id', chatId);
@@ -216,11 +212,11 @@ async function sendTelegramAlert(messageHtml){
 }
 
 async function sendTestTelegramMessage(){
-  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Live Test</b>\n\nTelegram integration successful! You will receive auto-sell signals here.");
+  let ok = await sendTelegramAlert("🚨 <b>A+ Trader Pro Test Alert</b>\n\nTelegram link operational! Auto-sell signals will arrive here.");
   if(ok){
     alert("✅ Test alert sent to Telegram!");
   } else {
-    alert("❌ Message nahi gaya. Bot token ya numeric Chat ID re-check karein.");
+    alert("❌ Error sending alert. Check Bot Token and Chat ID.");
   }
 }
 
@@ -265,7 +261,7 @@ function getVal(rows, searchKeys){
 }
 
 // -------------------------------------------------------------
-// ORIGINAL 100-POINT SCORING + SELL TRIGGER ENGINE
+// ENHANCED SCORING ENGINE (WITH VCP & RISK-CLAMPED STOPS)
 // -------------------------------------------------------------
 function scoreStock(o){
   let rows = o.rows || [o];
@@ -290,6 +286,7 @@ function scoreStock(o){
   let swing = getVal(rows, ['Recent Swing Low', 'Swing Low']);
   let support = getVal(rows, ['Support', 'Support 1', 'S1']);
   let res = getVal(rows, ['Resistance', 'Resistance 1', 'R1']);
+  let bbWidth = getVal(rows, ['BB Width', 'Bollinger Bandwidth', 'Bandwidth', 'bbwidth']);
 
   let missing = [];
   if (!Number.isFinite(p)) missing.push('Price');
@@ -299,19 +296,23 @@ function scoreStock(o){
   if (!Number.isFinite(dv) && !Number.isFinite(mv)) missing.push('Volume');
 
   let pts = 0, max = 0;
+  let qualifiedRulesCount = 0;
   let breakdown = [];
 
   const add = (label, w, ok, available, info) => {
     if(available){
       max += w;
-      if(ok) pts += w;
+      if(ok){
+        pts += w;
+        qualifiedRulesCount++;
+      }
       breakdown.push({ label, weight: w, passed: ok, info: info || '' });
     } else {
       breakdown.push({ label, weight: w, passed: false, info: 'Data Not Available' });
     }
   };
 
-  add('Multi-Screener Match', 20, rows.length >= 2, true, `Found in ${rows.length} file(s)`);
+  add('Multi-Screener Match', 15, rows.length >= 2, true, `Found in ${rows.length} file(s)`);
   add('Price > Short EMA', 5, p > (Number.isFinite(e10) ? e10 : e5), Number.isFinite(p) && (Number.isFinite(e10) || Number.isFinite(e5)), `₹${p} > ₹${e10||e5}`);
   add('Price > EMA20', 10, p > e20, Number.isFinite(p) && Number.isFinite(e20), `₹${p} > ₹${e20}`);
   add('Price > 50MA', 10, p > s50, Number.isFinite(p) && Number.isFinite(s50), `₹${p} > ₹${s50}`);
@@ -319,6 +320,11 @@ function scoreStock(o){
 
   let gap = (Number.isFinite(hi) && hi) ? ((hi - p) / hi * 100) : NaN;
   add('Near 52W High (<= 5%)', 10, gap >= 0 && gap <= 5, Number.isFinite(gap), `${Number.isFinite(gap) ? gap.toFixed(1) : '-'}% from High`);
+  
+  // VCP / Volatility Contraction Check (+5 pts)
+  let isContracted = (Number.isFinite(bbWidth) && bbWidth <= 12) || (Number.isFinite(atr) && Number.isFinite(p) && (atr / p) <= 0.035);
+  add('Volatility Contraction (VCP)', 5, isContracted, Number.isFinite(bbWidth) || Number.isFinite(atr), isContracted ? 'Tight Base Coiling' : 'Wide Volatility');
+
   add('Sector Outperformance', 5, sm > sec, Number.isFinite(sm) && Number.isFinite(sec), `Stock: ${sm}% vs Sector: ${sec}%`);
   add('Market Outperformance', 5, sec > ni, Number.isFinite(sec) && Number.isFinite(ni), `Sector: ${sec}% vs Nifty: ${ni}%`);
 
@@ -342,18 +348,30 @@ function scoreStock(o){
 
   let resistance = Number.isFinite(res) && res > p ? res : (Number.isFinite(hi) && hi > p ? hi : (Number.isFinite(wh) && wh > p ? wh : NaN));
   let entry = Number.isFinite(resistance) ? +(resistance * 1.005).toFixed(2) : (Number.isFinite(p) ? p : '-');
-  let supportLevel = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
-  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(p) ? p * 0.03 : 1);
-  let stop = Number.isFinite(supportLevel) ? +(supportLevel - buffer).toFixed(2) : (entry !== '-' ? +(entry * 0.97).toFixed(2) : '-');
   
-  let risk = (entry !== '-' && stop !== '-') ? (entry - stop) : NaN;
-  let t1 = Number.isFinite(risk) && risk > 0 ? +(entry + 2 * risk).toFixed(2) : '-';
-  let t2 = Number.isFinite(risk) && risk > 0 ? +(entry + 3 * risk).toFixed(2) : '-';
+  // Clamped Risk-Aware Stop Placement
+  let structuralSupport = Number.isFinite(swing) && swing < p ? swing : (Number.isFinite(support) && support < p ? support : (Number.isFinite(e20) && e20 < p ? e20 : NaN));
+  let buffer = Number.isFinite(atr) ? atr * 0.5 : (Number.isFinite(p) ? p * 0.025 : 1);
+  let rawStop = Number.isFinite(structuralSupport) ? (structuralSupport - buffer) : (entry !== '-' ? entry * 0.96 : NaN);
 
-  let critical = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
-  let action = (score >= 70 && critical && (p > (e20 || 0))) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
+  let stop = '-';
+  let t1 = '-', t2 = '-';
+  if (entry !== '-' && Number.isFinite(rawStop)) {
+    let unconstrainedRisk = entry - rawStop;
+    let minRisk = entry * 0.025; // Minimum 2.5% buffer for swing breathing room
+    let maxRisk = entry * 0.060; // Hard clamp: Max 6% risk per swing trade
 
-  // DYNAMIC SELL SIGNAL ENGINE
+    let finalRisk = Math.min(Math.max(unconstrainedRisk, minRisk), maxRisk);
+    stop = +(entry - finalRisk).toFixed(2);
+    t1 = +(entry + 2 * finalRisk).toFixed(2); // 1:2 RR
+    t2 = +(entry + 3 * finalRisk).toFixed(2); // 1:3 RR
+  }
+
+  let criticalAvailable = Number.isFinite(p) && (Number.isFinite(e20) || Number.isFinite(s50));
+  let isPriceAboveTrend = Number.isFinite(p) && ((Number.isFinite(e20) && p > e20) || (Number.isFinite(s50) && p > s50));
+  let action = (score >= 70 && criticalAvailable && isPriceAboveTrend) ? 'BUY' : score >= 55 ? 'WAIT' : 'AVOID';
+
+  // Position Tracking & Sell Signals
   let sellAlert = null;
   let isTracked = trackedBuys.has(o.key);
   if(isTracked && Number.isFinite(p)){
@@ -363,7 +381,7 @@ function scoreStock(o){
     let target2 = Number(buyData.t2);
 
     if(Number.isFinite(sl) && p <= sl){
-      sellAlert = { type: 'danger', code: 'SL', title: '🔴 SELL ALERT (SL HIT)', msg: `LTP ₹${p} <= SL ₹${sl}. Exit complete position.` };
+      sellAlert = { type: 'danger', code: 'SL', title: '🔴 SELL ALERT (SL HIT)', msg: `LTP ₹${p} <= SL ₹${sl}. Exit position.` };
     } else if(Number.isFinite(target2) && p >= target2){
       sellAlert = { type: 'success', code: 'T2', title: '🎯 SELL ALERT (TARGET 2 HIT)', msg: `LTP ₹${p} >= T2 ₹${target2}. Book full profits.` };
     } else if(Number.isFinite(target1) && p >= target1){
@@ -387,19 +405,34 @@ function scoreStock(o){
     gap: Number.isFinite(gap) ? +gap.toFixed(1) : '-',
     rsi: Number.isFinite(rsi) ? +rsi.toFixed(1) : (Number.isFinite(cci) ? `CCI ${cci}` : '-'),
     missing, breakdown, pts, max,
+    qualifiedRulesCount,
     isTracked, sellAlert
   };
 }
 
+// -------------------------------------------------------------
+// PRIORITY BUY RE-RANKING ENGINE
+// -------------------------------------------------------------
 function rebuildRankedFromMap(){
   let list = [];
   currentStockMap.forEach(stockObj => list.push(scoreStock(stockObj)));
-  ranked = list.sort((a,b) => b.score - a.score);
+
+  ranked = list.sort((a, b) => {
+    let actionPriority = { 'BUY': 3, 'WAIT': 2, 'AVOID': 1 };
+    let prioA = actionPriority[a.action] || 0;
+    let prioB = actionPriority[b.action] || 0;
+
+    if (prioB !== prioA) return prioB - prioA;
+    if (b.qualifiedRulesCount !== a.qualifiedRulesCount) return b.qualifiedRulesCount - a.qualifiedRulesCount;
+    if (b.score !== a.score) return b.score - a.score;
+    return b.screeners - a.screeners;
+  });
+
   return ranked;
 }
 
 // -------------------------------------------------------------
-// DISPATCH TELEGRAM SIGNALS FOR ACTIVE POSITIONS
+// TELEGRAM ALERT ENGINE
 // -------------------------------------------------------------
 async function dispatchTelegramAlerts(){
   let count = 0;
@@ -420,7 +453,7 @@ async function dispatchTelegramAlerts(){
         let msg = `🚨 <b>${x.sellAlert.title}</b>\n\n` +
                   `<b>Stock:</b> #${x.key} (${x.stock})\n` +
                   `<b>LTP:</b> ₹${x.rawPrice}${pnlText}\n` +
-                  `<b>Trigger Note:</b> ${x.sellAlert.msg}\n\n` +
+                  `<b>Trigger Details:</b> ${x.sellAlert.msg}\n\n` +
                   `<i>Time: ${new Date().toLocaleTimeString()}</i>`;
 
         await sendTelegramAlert(msg);
@@ -428,22 +461,21 @@ async function dispatchTelegramAlerts(){
     }
   }
   if(count > 0){
-    log(`Dispatched ${count} sell/profit alert(s) to Telegram!`);
+    log(`Dispatched ${count} sell notification(s) to Telegram.`);
   }
 }
 
-// SAFE TRACKING HANDLER
 function handleTrackClick(symbol){
   let item = ranked.find(x => x.key === symbol);
   if(!item) return;
 
   if(trackedBuys.has(symbol)){
     trackedBuys.delete(symbol);
-    log(`Removed ${symbol} from active tracking.`);
+    log(`Stopped tracking ${symbol}.`);
   } else {
     let p = Number.isFinite(item.rawPrice) ? item.rawPrice : 0;
-    let sl = Number.isFinite(item.rawStop) ? item.rawStop : +(p * 0.97).toFixed(2);
-    let t1 = Number.isFinite(item.rawT1) ? item.rawT1 : +(p * 1.05).toFixed(2);
+    let sl = Number.isFinite(item.rawStop) ? item.rawStop : +(p * 0.96).toFixed(2);
+    let t1 = Number.isFinite(item.rawT1) ? item.rawT1 : +(p * 1.06).toFixed(2);
     let t2 = Number.isFinite(item.rawT2) ? item.rawT2 : +(p * 1.10).toFixed(2);
 
     trackedBuys.set(symbol, { buyPrice: p, sl, t1, t2 });
@@ -471,11 +503,11 @@ function renderScreener(){
     el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);padding:30px;">No stocks match filter.</div>`;
   } else {
     el.innerHTML = filtered.map((x, i) => `
-      <div class="item" style="${x.sellAlert && x.sellAlert.type==='danger' ? 'border: 1px solid var(--danger);' : ''}">
+      <div class="item" style="${x.action==='BUY' ? 'border-color: rgba(34, 197, 94, 0.4); background: #0f2328;' : ''}${x.sellAlert && x.sellAlert.type==='danger' ? 'border: 1px solid var(--danger);' : ''}">
         <div class="row">
           <div>
             <div class="stock">${i+1}. ${x.stock} <small style="color:var(--accent);">(${x.key})</small></div>
-            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Match: ${x.screeners} file(s)</div>
+            <div class="muted">Price: ₹${x.price} ${x.sector ? '• ' + x.sector : ''} • Passed <b>${x.qualifiedRulesCount}</b> rules • Match: ${x.screeners} file(s)</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <button class="btn ${x.isTracked ? 'danger' : 'success'}" style="padding:5px 9px;font-size:11px;" 
@@ -496,8 +528,9 @@ function renderScreener(){
         ` : ''}
 
         <div class="tags">
-          <span class="tag tag-hold">Grade ${x.grade} (${x.score})</span>
+          <span class="tag tag-hold">Grade ${x.grade} (${x.score} pts)</span>
           <span class="tag ${x.action==='BUY'?'tag-buy':x.action==='WAIT'?'tag-warn':'tag-sell'}">${x.action}</span>
+          <span class="tag tag-hold">${x.qualifiedRulesCount} Rules Passed</span>
           ${x.missing.length ? `<span class="tag tag-sell">Missing: ${x.missing.join(', ')}</span>` : `<span class="tag tag-buy">100% Synced</span>`}
         </div>
 
@@ -567,7 +600,7 @@ async function handleFileSelect(e){
       reader.onload = function(evt){ processParsedRows(parseCSVText(evt.target.result), file.name); };
       reader.readAsText(file);
     } else {
-      if(typeof XLSX === 'undefined'){ alert("Excel engine error. CSV use karein."); continue; }
+      if(typeof XLSX === 'undefined'){ alert("Excel engine error. Please use CSV or reload."); continue; }
       let reader = new FileReader();
       reader.onload = function(evt){
         try {
@@ -594,15 +627,16 @@ function processParsedRows(rows, fileName){
   });
   rebuildRankedFromMap();
   renderScreener();
-  log(`Loaded ${fileName}. Total: ${ranked.length} stocks.`);
+  log(`Loaded ${fileName}. Total: ${ranked.length} stocks (Ranked by BUY).`);
   document.getElementById('status').textContent = `Loaded ${ranked.length} stocks!`;
 }
 
+// LIVE SYNC + IMMEDIATE RE-RANKING
 async function startSafeSync(){
   let queue = [...new Set([...currentStockMap.keys(), ...trackedBuys.keys()])];
-  if(!queue.length){ alert("Pehle Excel ya CSV file upload karein!"); return; }
+  if(!queue.length){ alert("Upload an Excel or CSV file first!"); return; }
 
-  log(`Live Syncing ${queue.length} stocks for latest price, EMA, RSI, SL/Target breaches...`);
+  log(`Live Syncing ${queue.length} stocks (Price, 52W, EMA20, RSI)...`);
   document.getElementById('status').textContent = "Syncing live data...";
   const CHUNK = 8;
   
@@ -633,10 +667,10 @@ async function startSafeSync(){
 
   rebuildRankedFromMap();
   renderScreener();
-  await dispatchTelegramAlerts(); // Send alerts to Telegram if triggered
-  log("Sync completed. Prices, Indicators & Sell alerts updated.");
+  await dispatchTelegramAlerts();
+  log("Live sync completed. Qualified BUY stocks pushed to top.");
   document.getElementById('status').textContent = "Sync complete • " + new Date().toLocaleTimeString();
-  alert("100% Google Finance Sync Completed! Sell Alerts evaluated and sent to Telegram.");
+  alert("100% Google Finance Sync Completed! Stocks successfully re-ranked.");
 }
 
 function showScoreBreakdown(symbol){
@@ -657,12 +691,12 @@ function showScoreBreakdown(symbol){
 
         <div style="background:#0b1120;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <span style="font-size:11px;color:var(--muted);display:block;">Score</span>
+            <span style="font-size:11px;color:var(--muted);display:block;">Final Score</span>
             <b style="font-size:24px;color:var(--accent);">${x.score} / 100</b>
           </div>
           <div style="text-align:right;">
-            <span style="font-size:11px;color:var(--muted);display:block;">Points Earned</span>
-            <b style="font-size:16px;color:#fff;">${x.pts} of ${x.max} pts</b>
+            <span style="font-size:11px;color:var(--muted);display:block;">Rules Qualified</span>
+            <b style="font-size:16px;color:#4ade80;">${x.qualifiedRulesCount} Rules Passed</b>
           </div>
         </div>
 
@@ -690,9 +724,9 @@ function closeBreakdownModal(){ document.getElementById('modalContainer').innerH
 
 function runDemo(){
   const demoData = [
-    { 'Stock name': 'TRENT', 'LTP': 7120, '1Yr High': 7250, 'ema20': 6850, 'ema50': 6400, 'RSI': 68, 'Volume': 1500000, 'Month Volume Avg': 900000 },
-    { 'Stock name': 'BEL', 'LTP': 315, '1Yr High': 340, 'ema20': 298, 'ema50': 282, 'RSI': 64, 'Volume': 5000000, 'Month Volume Avg': 4000000 },
-    { 'Stock name': 'DIXON', 'LTP': 13200, '1Yr High': 13450, 'ema20': 12800, 'ema50': 12100, 'RSI': 71, 'Volume': 800000, 'Month Volume Avg': 450000 }
+    { 'Stock name': 'TRENT', 'LTP': 7120, '1Yr High': 7250, 'ema20': 6850, 'ema50': 6400, 'RSI': 68, 'Volume': 1500000, 'Month Volume Avg': 900000, 'BB Width': 8.5 },
+    { 'Stock name': 'BEL', 'LTP': 315, '1Yr High': 340, 'ema20': 298, 'ema50': 282, 'RSI': 64, 'Volume': 5000000, 'Month Volume Avg': 4000000, 'BB Width': 16.2 },
+    { 'Stock name': 'DIXON', 'LTP': 13200, '1Yr High': 13450, 'ema20': 12800, 'ema50': 12100, 'RSI': 71, 'Volume': 800000, 'Month Volume Avg': 450000, 'BB Width': 9.1 }
   ];
   demoData.forEach(r => {
     let norm = normalizeRow(r); norm._raw = r;
@@ -701,7 +735,7 @@ function runDemo(){
   trackedBuys.set('BEL', { buyPrice: 320, sl: 316, t1: 335, t2: 350 });
   rebuildRankedFromMap();
   renderScreener();
-  log("Demo loaded with sample SL breach Sell Alert on BEL.");
+  log("Demo loaded with VCP assessment and clamped risk controls.");
   document.getElementById('status').textContent = "Demo loaded!";
 }
 
@@ -711,11 +745,10 @@ function clearData(){
   trackedBuys.clear();
   saveTrackedBuys();
   renderScreener();
-  log("Cleared all stock data.");
+  log("Cleared all screener and tracking data.");
   document.getElementById('status').textContent = "Data cleared!";
 }
 
-// Init Telegram settings on startup
 document.addEventListener('DOMContentLoaded', () => {
   updateTelegramBadge();
   let t = localStorage.getItem('aplus_tg_token');
